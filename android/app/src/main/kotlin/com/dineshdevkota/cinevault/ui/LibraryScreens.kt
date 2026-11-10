@@ -329,7 +329,13 @@ private fun MoviesTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
                     saveFacets(facets.copy(decades = it))
                 }, Modifier.weight(1f), allLabel = "All decades")
                 LibraryFilterMenu("Section", setOf(kind), MediaKind.entries, { it.label }, {
-                    kind = it.single()
+                    val selectedKind = it.single()
+                    if (selectedKind != kind) {
+                        kind = selectedKind
+                        saveFacets(facets.copy(genres = emptySet(), decades = emptySet()))
+                        filter = LibraryFilter.ALL
+                        settings.libraryFilter = filter
+                    }
                 }, Modifier.weight(1.2f))
                 OutlinedButton(
                     enabled = facets != LibraryFacets() || filter != LibraryFilter.ALL,

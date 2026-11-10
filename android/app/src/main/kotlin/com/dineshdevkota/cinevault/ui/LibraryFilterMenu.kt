@@ -86,6 +86,7 @@ internal fun <T : Any> LibraryFilterMenu(
         var draft by remember { mutableStateOf(values) }
         val choices: List<T?> = remember(options, allLabel) { if (allLabel == null) options else listOf(null) + options }
         val start = remember { choices.indexOfFirst { it in values }.coerceAtLeast(0) }
+        val initialChoice = remember { choices.getOrNull(start) }
         val list = rememberLazyListState(initialFirstVisibleItemIndex = start)
         val focus = remember { FocusRequester() }
         val applyFocus = remember { FocusRequester() }
@@ -107,10 +108,12 @@ internal fun <T : Any> LibraryFilterMenu(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    items(choices.size) { index ->
+                    items(choices.size, key = { index ->
+                        choices[index]?.let { "$label:option:$it" } ?: "$label:all"
+                    }) { index ->
                         val choice = choices[index]
                         val checked = if (choice == null) draft.isEmpty() else choice in draft
-                        val initial = if (index == start) Modifier.focusRequester(focus).onGloballyPositioned { placed = true } else Modifier
+                        val initial = if (choice == initialChoice) Modifier.focusRequester(focus).onGloballyPositioned { placed = true } else Modifier
                         OutlinedButton(
                             modifier = initial.fillMaxWidth().focusProperties {
                                 if (allLabel != null) right = applyFocus

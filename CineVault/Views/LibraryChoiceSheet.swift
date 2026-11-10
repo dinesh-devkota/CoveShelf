@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A single choice takes effect immediately. A picker with an All row stages multiple choices until Apply.
 struct LibraryChoiceSheet<Value: Hashable>: View {
-    private enum Row: Hashable { case all, option(Value) }
+    private enum Row: Hashable { case all, option(Value), apply }
 
     let title: String
     let options: [Value]
@@ -10,6 +10,7 @@ struct LibraryChoiceSheet<Value: Hashable>: View {
     let label: (Value) -> String
     let apply: (Set<Value>) -> Void
     @State private var draft: Set<Value>
+    @State private var lastChoice: Row?
     @FocusState private var focus: Row?
     @Environment(\.dismiss) private var dismiss
 
@@ -35,6 +36,10 @@ struct LibraryChoiceSheet<Value: Hashable>: View {
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
+                    .focused($focus, equals: .apply)
+                    .onMoveCommand { direction in
+                        if direction == .left { focus = lastChoice ?? .all }
+                    }
                 }
             }
             ScrollViewReader { scroll in
@@ -66,11 +71,15 @@ struct LibraryChoiceSheet<Value: Hashable>: View {
         }
         .padding(56)
         .frame(maxWidth: 1150)
+        .onChange(of: focus) { _, current in
+            if let current, current != .apply { lastChoice = current }
+        }
         .onExitCommand { dismiss() }
     }
 
+    @ViewBuilder
     private func choiceRow(_ row: Row, text: String, checked: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let button = Button(action: action) {
             HStack {
                 Text(text)
                 Spacer()
@@ -81,5 +90,16 @@ struct LibraryChoiceSheet<Value: Hashable>: View {
         .focused($focus, equals: row)
         .accessibilityAddTraits(checked ? .isSelected : [])
         .id(row)
+
+        if all != nil {
+            button.onMoveCommand { direction in
+                if direction == .right {
+                    lastChoice = row
+                    focus = .apply
+                }
+            }
+        } else {
+            button
+        }
     }
 }

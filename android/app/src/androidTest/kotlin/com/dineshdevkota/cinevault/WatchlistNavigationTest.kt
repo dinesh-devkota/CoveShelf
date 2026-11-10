@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performKeyInput
@@ -104,7 +105,7 @@ class WatchlistNavigationTest {
     fun watchlistSourceAndDecadeFiltersPersistAcrossRecreationAndRelaunch() = runBlocking {
         val first = source("Watchlist A")
         val second = source("Watchlist B")
-        movie(first, "Alpha Nineties", 1994, watchlisted = true)
+        val alpha = movie(first, "Alpha Nineties", 1994, watchlisted = true)
         movie(first, "Alpha Recent", 2021, watchlisted = true, genre = "Comedy")
         movie(second, "Beta Nineties", 1996, watchlisted = true)
         movie(first, "Alpha Other", 1995)
@@ -119,6 +120,11 @@ class WatchlistNavigationTest {
             visible("Unwatched")
             activate("Watchlist")
             activate("Genre: Drama")
+            val focusedDrama = hasText("Drama") and hasClickAction() and isFocused()
+            compose.waitUntilExactlyOneExists(focusedDrama, timeoutMillis = 10_000)
+            container.database.movies().update(alpha.copy(genres = listOf("Action", "Drama")))
+            visible("Action")
+            compose.onNode(hasText("Drama") and hasClickAction()).assertIsFocused()
             activate("Comedy")
             device.pressBack()
             visible("Genre: Drama")
@@ -137,6 +143,14 @@ class WatchlistNavigationTest {
             activate("2020s")
             activate("Apply")
             assertSelections()
+            activate("Sort: Title")
+            activate("Year")
+            val savedFacets = container.settings.libraryFacets
+            activate("Section: Movies")
+            activate("Movies")
+            assertSelections()
+            assertEquals(savedFacets, container.settings.libraryFacets)
+            assertEquals(LibrarySort.YEAR, container.settings.librarySort)
             main.recreate()
             assertSelections()
         }
@@ -154,6 +168,19 @@ class WatchlistNavigationTest {
             activate("Show: Watchlist")
             activate("Hidden")
             visible("No matching movies")
+            activate("Section: Movies")
+            activate("Music")
+            visible("Show: All")
+            visible("Genre: All genres")
+            visible("Decade: All decades")
+            visible("Source: Watchlist B")
+            visible("Sort: Year")
+            assertEquals(LibraryFacets(sourceIds = setOf(second.id)), container.settings.libraryFacets)
+            assertEquals(LibraryFilter.ALL, container.settings.libraryFilter)
+            assertEquals(LibrarySort.YEAR, container.settings.librarySort)
+            activate("Section: Music")
+            activate("Movies")
+            visible("Beta Nineties")
             activate("Clear filters")
             visible("Show: All")
             visible("Genre: All genres")
