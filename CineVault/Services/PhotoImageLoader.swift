@@ -17,9 +17,12 @@ enum PhotoLoadingError: LocalizedError, Equatable {
 
 /// Limits simultaneous encoded buffers without polling; cancelled thumbnails leave the queue immediately.
 private actor PhotoLoadSlots {
+    private let onQueued: () -> Void
     private var active = 0
     private var order: [UUID] = []
     private var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
+
+    init(onQueued: @escaping () -> Void) { self.onQueued = onQueued }
 
     func acquire() async throws {
         try Task.checkCancellation()
@@ -28,7 +31,7 @@ private actor PhotoLoadSlots {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 if Task.isCancelled { continuation.resume(throwing: CancellationError()) }
-                else { order.append(id); waiters[id] = continuation }
+                else { order.append(id); waiters[id] = continuation; onQueued() }
             }
         } onCancel: { Task { await self.cancel(id) } }
     }
@@ -55,7 +58,7 @@ actor PhotoImageLoader {
     static let viewingPixels = 4096
     static let maximumDecodedPixels = 4_194_304
     static let maximumDecodedBytes = 32 * 1024 * 1024
-    private let slots = PhotoLoadSlots()
+    private let slots: PhotoLoadSlots
     private let fileSize: (SourceConfig, String) async throws -> Int64
     private let read: (SourceConfig, String, Int64, Int) async throws -> Data
     private var cache: [CacheKey: CachedImage] = [:]
@@ -82,7 +85,9 @@ actor PhotoImageLoader {
     }
 
     init(fileSize: ((SourceConfig, String) async throws -> Int64)? = nil,
-         read: ((SourceConfig, String, Int64, Int) async throws -> Data)? = nil) {
+         read: ((SourceConfig, String, Int64, Int) async throws -> Data)? = nil,
+         onQueued: @escaping () -> Void = {}) {
+        slots = PhotoLoadSlots(onQueued: onQueued)
         let service = SMBService(timeout: 15)
         self.fileSize = fileSize ?? { try await service.fileSize($0, path: $1) }
         self.read = read ?? { try await service.read($0, path: $1, offset: $2, length: $3) }

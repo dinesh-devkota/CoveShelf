@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -50,7 +51,7 @@ import kotlinx.coroutines.CancellationException
 private sealed interface PhotoImageState {
     data object Loading : PhotoImageState
     data class Ready(val bitmap: ImageBitmap) : PhotoImageState
-    data class Failed(val message: String) : PhotoImageState
+    data class Failed(val message: String, val attempt: Int) : PhotoImageState
 }
 
 @Composable
@@ -61,7 +62,7 @@ private fun photoImage(photo: MovieEntity, thumbnail: Boolean, sourceVersion: In
         value = PhotoImageState.Loading
         try { value = PhotoImageState.Ready(container.photos.load(photo.id, thumbnail).asImageBitmap()) }
         catch (cancelled: CancellationException) { throw cancelled }
-        catch (failure: Exception) { value = PhotoImageState.Failed(NasPhotoLoader.describe(failure)) }
+        catch (failure: Exception) { value = PhotoImageState.Failed(NasPhotoLoader.describe(failure), retry) }
     }
 }
 
@@ -97,24 +98,65 @@ internal fun PhotosTab(movies: List<MovieEntity>) {
     var lastAlbumId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedPhoto by rememberSaveable { mutableStateOf<String?>(null) }
     val album = albums.firstOrNull { it.id == albumId }
+    val targetAlbumId = lastAlbumId?.takeIf { id -> albums.any { it.id == id } } ?: albums.firstOrNull()?.id
+    val targetPhotoId = selectedPhoto?.takeIf { id -> album?.photos?.any { it.id == id } == true } ?: album?.photos?.firstOrNull()?.id
     val albumsState = rememberLazyGridState()
     val photosState = key(albumId) { rememberLazyGridState() }
     val restoreFocus = remember { FocusRequester() }
-    var focusReady by remember(albumId, selectedPhoto, lastAlbumId) { mutableStateOf(false) }
+    val transitionFocus = remember { FocusRequester() }
+    var holdingFocus by remember { mutableStateOf(false) }
+    var focusReady by remember(albumId, targetPhotoId, targetAlbumId) { mutableStateOf(false) }
     var focusPending by remember { mutableStateOf(false) }
+    var focusRequest by remember { mutableIntStateOf(0) }
     val windowFocused = LocalWindowInfo.current.isWindowFocused
-    fun backToAlbums() { albumId = null; selectedPhoto = null; focusPending = true }
+    val selectedAlbumId = albumId
+    val selectedPhotoId = selectedPhoto
+    val requestedFocus = focusRequest
+    val requestedPending = focusPending
+    val requestedReady = focusReady
+    val requestedWindow = windowFocused
+    fun requestIsCurrent() = focusRequest == requestedFocus && albumId == selectedAlbumId && selectedPhoto == selectedPhotoId
+    fun holdFocus() {
+        // Keep focus inside Photos while its old grid is removed. Otherwise the tab row can take
+        // focus and its onFocus handler changes to Home before the replacement card is laid out.
+        holdingFocus = true
+        focusRequest++
+        transitionFocus.requestFocus()
+    }
+    fun backToAlbums() { holdFocus(); albumId = null; selectedPhoto = null; focusPending = true }
+    fun openAlbum(id: String, firstPhoto: String) {
+        holdFocus(); lastAlbumId = id; albumId = id; selectedPhoto = firstPhoto; focusPending = true
+    }
     BackHandler(enabled = albumId != null) { backToAlbums() }
-    LaunchedEffect(windowFocused) { if (windowFocused && selectedPhoto != null) focusPending = true }
-    LaunchedEffect(albumId, albums) { if (albumId != null && album == null) backToAlbums() }
-    LaunchedEffect(windowFocused, focusReady, focusPending) {
-        if (windowFocused && focusReady && focusPending && restoreFocus.requestFocus()) focusPending = false
+    LaunchedEffect(windowFocused) {
+        if (requestedWindow && selectedPhotoId != null) { focusRequest++; focusPending = true }
+    }
+    LaunchedEffect(selectedAlbumId, albums) {
+        // Read one composition snapshot. A pending album-list effect must not clear a new click.
+        if (selectedAlbumId != null && albums.none { it.id == selectedAlbumId } && albumId == selectedAlbumId) backToAlbums()
+    }
+    LaunchedEffect(selectedAlbumId, targetAlbumId, targetPhotoId, requestedPending, requestedFocus) {
+        if (requestedPending && requestIsCurrent()) {
+            val grid = if (album == null) albumsState else photosState
+            val target = if (album == null) targetAlbumId else targetPhotoId
+            val index = if (album == null) albums.indexOfFirst { it.id == target }
+                else album.photos.indexOfFirst { it.id == target }
+            if (index >= 0 && grid.layoutInfo.visibleItemsInfo.none { it.key == target }) grid.scrollToItem(index)
+        }
+    }
+    LaunchedEffect(requestedWindow, requestedReady, requestedPending, requestedFocus) {
+        if (requestedWindow && requestedReady && requestedPending && requestIsCurrent() && restoreFocus.requestFocus()) {
+            focusPending = false
+            holdingFocus = false
+        }
     }
 
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().focusRequester(transitionFocus).focusProperties { canFocus = holdingFocus }.focusable(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ScreenHeader(album?.title ?: "Photos", Modifier.padding(horizontal = ScreenPadding),
             kicker = if (album == null) "YOUR PHOTO ALBUMS" else sourceById[album.sourceId]?.name ?: "YOUR NAS",
-            trailing = album?.let { "${it.photos.size} photos" } ?: "${albums.size} albums")
+            trailing = album?.let { "${it.photos.size} ${if (it.photos.size == 1) "photo" else "photos"}" }
+                ?: "${albums.size} ${if (albums.size == 1) "album" else "albums"}")
         if (album != null) Row(Modifier.padding(horizontal = ScreenPadding), horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = ::backToAlbums) { Text("All albums") }
@@ -123,7 +165,8 @@ internal fun PhotosTab(movies: List<MovieEntity>) {
         if (albums.isEmpty()) {
             Column(Modifier.padding(horizontal = ScreenPadding)) {
                 EmptyState("Your photos, on the big screen", "Add a NAS folder containing photos, then scan it. Each folder becomes an album.")
-                Button(onClick = { NasSetupActivity.start(context) }) { Text("Add photo folder") }
+                Button(onClick = { NasSetupActivity.start(context) },
+                    modifier = Modifier.focusRequester(restoreFocus).onGloballyPositioned { focusReady = true }) { Text("Add photo folder") }
             }
         } else LazyVerticalGrid(GridCells.Adaptive(220.dp), Modifier.weight(1f),
             state = if (album == null) albumsState else photosState,
@@ -131,21 +174,21 @@ internal fun PhotosTab(movies: List<MovieEntity>) {
             horizontalArrangement = Arrangement.spacedBy(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             if (album == null) items(albums, key = { it.id }) { item ->
                 Column {
-                    val focus = if (item.id == lastAlbumId) Modifier.focusRequester(restoreFocus).onGloballyPositioned { focusReady = true } else Modifier
-                    Card(onClick = { lastAlbumId = item.id; albumId = item.id; selectedPhoto = item.photos.first().id; focusPending = true },
+                    val focus = if (item.id == targetAlbumId) Modifier.focusRequester(restoreFocus).onGloballyPositioned { focusReady = true } else Modifier
+                    Card(onClick = { openAlbum(item.id, item.photos.first().id) },
                         modifier = focus.fillMaxWidth().aspectRatio(4f / 3f).testTag("photo-album:${item.id}").pointerClick {
-                            lastAlbumId = item.id; albumId = item.id; selectedPhoto = item.photos.first().id; focusPending = true
+                            openAlbum(item.id, item.photos.first().id)
                         }, shape = CardDefaults.shape(RoundedCornerShape(12.dp))) {
                         PhotoThumbnail(item.photos.first(), sourceById[item.sourceId]?.hashCode() ?: 0)
                     }
                     Text(item.title, Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium)
-                    Text("${sourceById[item.sourceId]?.name ?: "NAS"} · ${item.photos.size} photos", color = SecondaryText,
+                    Text("${sourceById[item.sourceId]?.name ?: "NAS"} · ${item.photos.size} ${if (item.photos.size == 1) "photo" else "photos"}", color = SecondaryText,
                         style = MaterialTheme.typography.labelMedium)
                     Text(item.folder.ifBlank { "Shared folder" }, color = SecondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall)
                 }
             } else items(album.photos, key = { it.id }) { photo ->
-                PhotoTile(photo, Modifier.testTag("photo:${photo.id}").then(if (photo.id == selectedPhoto)
+                PhotoTile(photo, Modifier.testTag("photo:${photo.id}").then(if (photo.id == targetPhotoId)
                     Modifier.focusRequester(restoreFocus).onGloballyPositioned { focusReady = true } else Modifier),
                     sourceById[photo.sourceId]?.hashCode() ?: 0) {
                     selectedPhoto = photo.id
@@ -218,7 +261,9 @@ private fun PhotoViewerScreen(initialId: String, onClose: () -> Unit) {
                 when (val image = imageState) {
                     null, PhotoImageState.Loading -> NasStatusPanel("Opening photo…", working = true)
                     is PhotoImageState.Ready -> Image(image.bitmap, photo.title, Modifier.fillMaxSize().testTag("full-photo:${photo.id}"), contentScale = ContentScale.Fit)
-                    is PhotoImageState.Failed -> NasStatusPanel("Couldn't open photo", image.message, error = true)
+                    is PhotoImageState.Failed -> Box(Modifier.testTag("photo-error:${photo.id}:${image.attempt}")) {
+                        NasStatusPanel("Couldn't open photo", image.message, error = true)
+                    }
                 }
             }
         }

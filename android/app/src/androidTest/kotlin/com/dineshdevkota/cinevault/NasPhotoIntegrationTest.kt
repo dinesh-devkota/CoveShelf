@@ -85,6 +85,7 @@ class NasPhotoIntegrationTest {
             val first = photos.single { it.fileName == "01.jpg" }
             val second = photos.single { it.fileName == "02.png" }
             val third = photos.single { it.fileName == "03.webp" }
+            val broken = photos.single { it.fileName == "broken.jpg" }
             ActivityScenario.launch(MainActivity::class.java).use {
                 visible(hasText("Welcome to CoveShelf"))
                 device.pressDPadRight()
@@ -100,10 +101,11 @@ class NasPhotoIntegrationTest {
                 device.pressDPadRight()
                 visible(hasTestTag("full-photo:${third.id}"))
                 device.pressDPadRight()
-                visible(hasText("Couldn't open photo"))
+                visible(hasTestTag("photo-error:${broken.id}:0"))
                 focusedButton("Try again")
                 device.pressDPadCenter()
-                visible(hasText("Couldn't open photo"))
+                // Observe a completed new attempt, not the still-visible previous error.
+                visible(hasTestTag("photo-error:${broken.id}:1"))
                 focusedButton("Try again")
                 device.pressDPadLeft()
                 focusedButton("Previous")

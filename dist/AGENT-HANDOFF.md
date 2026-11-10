@@ -578,6 +578,29 @@ documentation; its application source is identical to the validated revision.
 - Local Android validation passed 137 JVM tests (zero failures/skips), lint and
   debug/app-test packaging. Both `TVNavigationTest` remote-navigation and
   activity-recreation tests passed on the isolated TV emulator.
+- Photo/name batch is public development revision `3de3bf0`, with hosted
+  [development validation](https://github.com/dinesh-devkota/CoveShelf/actions/runs/42912918780)
+  and [Android runtime validation](https://github.com/dinesh-devkota/CoveShelf/actions/runs/42912918784).
+  Both app builds, core tests and all seven Apple previews passed. Apple ran
+  91 simulator tests with one old scan-summary assertion failure; Android ran
+  47 runtime tests with one album-navigation failure and no skips. Native photo
+  decoding and SMB photo tests passed on both platforms. Do not merge yet.
+- Follow-up validation reproduces Android album clicks falling back to the Home
+  tab when the focused card is removed. A local synthetic `PhotoNavigationTest`
+  covers opening/Back while source observations change. The scan-summary test
+  now includes photo counts and injects its metadata dependency. Retry and queued
+  cancellation tests wait for observable state transitions, rather than accepting
+  a previous result. Apple photo cards are being refined after visual review.
+- The Android focus repair keeps a stable focus target during album/grid changes,
+  then restores the selected card after layout, with snapshots rejecting stale
+  requests. Offscreen fallback targets scroll into view. The local album
+  regression and both tab-navigation/recreation checks passed together (3 tests).
+  Apple photo-card contrast and singular counts are corrected; updated Home and
+  detail documentation screenshots show CoveShelf. Final hosted rerun is pending.
+- Private companion revision `7649f3f51f48788628c06439249ae4c7d5b86055`
+  on `codex/fix-catalog-refresh` updates only visible app names and the public
+  privacy link. Package, purchase, credential and repository IDs are preserved.
+  It has not been through a new protected commercial build or merged to main.
 - Root owns Gradle and the isolated `CoveShelfPhotoTest` AVD on emulator-5584.
   The owner's `CineVault_TV` is stopped and has not yet received this update.
 - Follow-on usability priorities from the Infuse review: one continuation card

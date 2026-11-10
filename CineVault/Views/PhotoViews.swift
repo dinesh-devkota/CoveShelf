@@ -20,6 +20,8 @@ struct PhotosView: View {
     private let columns = [GridItem(.adaptive(minimum: 380, maximum: 380), spacing: 42)]
 
     var body: some View {
+        let visibleAlbums = albums
+        let photoCount = visibleAlbums.reduce(0) { $0 + $1.photos.count }
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 HStack(alignment: .bottom) {
@@ -28,15 +30,16 @@ struct PhotosView: View {
                         Text("Photos").font(.system(size: 62, weight: .bold))
                     }
                     Spacer()
-                    Text("\(albums.count) albums · \(albums.reduce(0) { $0 + $1.photos.count }) photos").foregroundStyle(CinemaTheme.secondaryText)
+                    Text("\(visibleAlbums.count) \(visibleAlbums.count == 1 ? "album" : "albums") · \(photoCount) \(photoCount == 1 ? "photo" : "photos")")
+                        .foregroundStyle(CinemaTheme.secondaryText)
                 }
-                if albums.isEmpty {
+                if visibleAlbums.isEmpty {
                     ContentUnavailableView("Your photos belong here", systemImage: "photo.on.rectangle.angled",
                         description: Text("Add a NAS photo folder in Sources, then scan. Albums follow your folders, and your photos stay on your NAS."))
                         .padding(.top, 100)
                 } else {
                     LazyVGrid(columns: columns, spacing: 48) {
-                        ForEach(albums) { album in
+                        ForEach(visibleAlbums) { album in
                             NavigationLink {
                                 PhotoAlbumView(albumID: album.id)
                             } label: {
@@ -44,12 +47,16 @@ struct PhotosView: View {
                                     if let photo = album.photos.first {
                                         PhotoThumbnail(photo: photo, width: 380, height: 230, focused: focusedAlbum == album.id)
                                     }
-                                    Text(album.title).font(.system(size: 26, weight: .semibold)).lineLimit(1)
-                                    Text("\(album.sourceName) · \(album.photos.count) photos").font(.system(size: 20)).foregroundStyle(CinemaTheme.secondaryText)
-                                    if !album.folder.isEmpty { Text(album.folder).font(.caption2).foregroundStyle(CinemaTheme.secondaryText).lineLimit(1) }
+                                    Text(album.title).font(.system(size: 26, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                                    Text("\(album.sourceName) · \(album.photos.count) \(album.photos.count == 1 ? "photo" : "photos")")
+                                        .font(.system(size: 20)).foregroundStyle(CinemaTheme.secondaryText)
+                                    if !album.folder.isEmpty && album.folder != album.title {
+                                        Text(album.folder).font(.caption2).foregroundStyle(CinemaTheme.secondaryText).lineLimit(1)
+                                    }
                                 }
+                                .foregroundStyle(.white)
                                 .frame(width: 380, alignment: .leading)
-                            }.buttonStyle(.plain).focused($focusedAlbum, equals: album.id)
+                            }.buttonStyle(.plain).focusEffectDisabled().focused($focusedAlbum, equals: album.id)
                         }
                     }.padding(.vertical, 24)
                 }
@@ -71,7 +78,10 @@ struct PhotoAlbumView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(album?.title ?? "Album").font(.system(size: 54, weight: .bold))
-                        if let album { Text("\(album.sourceName) · \(album.photos.count) photos").foregroundStyle(CinemaTheme.secondaryText) }
+                        if let album {
+                            Text("\(album.sourceName) · \(album.photos.count) \(album.photos.count == 1 ? "photo" : "photos")")
+                                .foregroundStyle(CinemaTheme.secondaryText)
+                        }
                     }
                     Spacer()
                     Button { dismiss() } label: { Label("Back", systemImage: "chevron.left") }
@@ -91,6 +101,8 @@ struct PhotoAlbumView: View {
 struct PhotoGrid: View {
     let photos: [Movie]
     var focusesFirstPhoto = false
+    var showsSourceName = false
+    var onSelection: (UUID) -> Void = { _ in }
     @FocusState private var focusedPhoto: UUID?
     @State private var selected: Movie?
     private let columns = [GridItem(.adaptive(minimum: 350, maximum: 350), spacing: 38)]
@@ -98,12 +110,15 @@ struct PhotoGrid: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 38) {
             ForEach(photos) { photo in
-                Button { selected = photo } label: {
+                Button { onSelection(photo.id); selected = photo } label: {
                     VStack(alignment: .leading, spacing: 10) {
                         PhotoThumbnail(photo: photo, width: 350, height: 220, focused: focusedPhoto == photo.id)
-                        Text(PhotoLibrary.title(photo)).font(.system(size: 22, weight: .semibold)).lineLimit(1)
-                    }.frame(width: 350, alignment: .leading)
-                }.buttonStyle(.plain).focused($focusedPhoto, equals: photo.id)
+                        Text(PhotoLibrary.title(photo)).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                        if showsSourceName {
+                            Text(photo.source?.name ?? "NAS").font(.caption).foregroundStyle(CinemaTheme.secondaryText).lineLimit(1)
+                        }
+                    }.foregroundStyle(.white).frame(width: 350, alignment: .leading)
+                }.buttonStyle(.plain).focusEffectDisabled().focused($focusedPhoto, equals: photo.id)
             }
         }.padding(.vertical, 24)
         .fullScreenCover(item: $selected) { PhotoDestination(photo: $0) }

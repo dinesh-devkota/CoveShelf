@@ -88,7 +88,7 @@ final class LibraryProgressTests: XCTestCase {
         context.insert(old)
         try context.save()
         let files = [RemoteFile(path: "Movies/New.mp4", size: 100), RemoteFile(path: "Documentaries/Nature.mp4", size: 100)]
-        let scanner = LibraryScanner(scanWithProgress: { _, report in
+        let scanner = LibraryScanner(fetchMetadata: { _ in nil }, scanWithProgress: { _, report in
             try await report(ScanProgress(files: Array(files.prefix(1)), found: 1, folders: 1))
             XCTAssertFalse(old.isMissing)
             try await report(ScanProgress(files: Array(files.suffix(1)), found: 2, folders: 2))
@@ -98,7 +98,6 @@ final class LibraryProgressTests: XCTestCase {
         await scanner.scan(source, context: context)
         XCTAssertTrue(old.isMissing)
         XCTAssertNotNil(source.lastScanDate)
-        XCTAssertTrue(scanner.status?.contains("1 movies, 1 documentaries, 0 TV episodes, 0 music items (2 new)") == true,
-                      scanner.status ?? "No scan status")
+        XCTAssertEqual(scanner.status, "Media: 1 movies, 1 documentaries, 0 TV episodes, 0 music items, 0 photos (2 new)")
     }
 }

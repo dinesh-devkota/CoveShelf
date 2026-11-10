@@ -133,23 +133,41 @@ final class PhotoImageLoaderTests: XCTestCase {
         }
     }
 
+    private actor Completion {
+        private(set) var result: Result<UIImage, Error>?
+        func record(_ result: Result<UIImage, Error>) { self.result = result }
+    }
+
     func testOnlyTwoReadsRunAndQueuedCancellationDoesNotBlockLaterPhotos() async throws {
         let bytes = try Self.fixture("01.jpg")
         let entered = expectation(description: "Two read slots are occupied")
         entered.expectedFulfillmentCount = 2; entered.assertForOverFulfill = true
+        let queued = expectation(description: "Third request is waiting for a slot")
+        let cancelled = expectation(description: "Queued cancellation completes before active reads finish")
         let reads = BlockedReads(bytes, entered: entered)
-        let loader = PhotoImageLoader(fileSize: { _, _ in Int64(bytes.count) }, read: { _, _, _, _ in await reads.read() })
+        let loader = PhotoImageLoader(fileSize: { _, _ in Int64(bytes.count) },
+            read: { _, _, _, _ in await reads.read() }, onQueued: { queued.fulfill() })
         let config = configuration()
+        let completion = Completion()
         let first = Task { try await loader.image(config: config, path: "Photos/1.jpg", knownSize: Int64(bytes.count), maxPixelSize: 512) }
         let second = Task { try await loader.image(config: config, path: "Photos/2.jpg", knownSize: Int64(bytes.count), maxPixelSize: 512) }
         await fulfillment(of: [entered], timeout: 5)
-        let third = Task { try await loader.image(config: config, path: "Photos/3.jpg", knownSize: Int64(bytes.count), maxPixelSize: 512) }
+        let third = Task {
+            do {
+                let image = try await loader.image(config: config, path: "Photos/3.jpg", knownSize: Int64(bytes.count), maxPixelSize: 512)
+                await completion.record(.success(image))
+            } catch { await completion.record(.failure(error)) }
+            cancelled.fulfill()
+        }
+        await fulfillment(of: [queued], timeout: 5)
         third.cancel()
-        do { _ = try await third.value; XCTFail("Queued cancellation must finish without an image") }
-        catch { XCTAssertTrue(error is CancellationError) }
+        await fulfillment(of: [cancelled], timeout: 5)
         let activeReads = await reads.count
-        XCTAssertEqual(activeReads, 2)
         await reads.release()
+        let result = await completion.result
+        if case .some(.failure(let error)) = result { XCTAssertTrue(error is CancellationError) }
+        else { XCTFail("Queued cancellation must complete without an image") }
+        XCTAssertEqual(activeReads, 2)
         _ = try await first.value; _ = try await second.value
         _ = try await loader.image(config: config, path: "Photos/4.jpg", knownSize: Int64(bytes.count), maxPixelSize: 512)
         let finalReads = await reads.count
