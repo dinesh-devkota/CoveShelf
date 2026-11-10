@@ -85,14 +85,15 @@ class NasSetupNavigationTest {
                 press("CINEVAULT")
                 press("MediaChecks")
                 press("Ignored")
-                label("CINEVAULT / MediaChecks/Ignored")
+                folderReady("MediaChecks/Ignored")
                 device.pressBack()
-                label("CINEVAULT / MediaChecks")
+                folderReady("MediaChecks")
                 press("Ignored")
+                folderReady("MediaChecks/Ignored")
                 device.pressBack()
-                label("CINEVAULT / MediaChecks")
+                folderReady("MediaChecks")
                 device.pressBack()
-                label("CINEVAULT / Top level")
+                folderReady("Top level")
                 device.pressBack()
                 label("Choose the shared folder that contains your media.")
                 device.pressBack()
@@ -145,6 +146,11 @@ class NasSetupNavigationTest {
     }
 
     private fun label(text: String) = visible(hasText(text))
+    private fun folderReady(path: String) {
+        // Physical Back must exercise the displayed folder, not race its asynchronous listing.
+        label("CINEVAULT / $path")
+        visible(hasText("Use this folder & scan") and hasClickAction() and isEnabled())
+    }
     private fun fill(label: String, value: String) {
         visible(hasText(label) and hasSetTextAction()).performTextReplacement(value)
     }
