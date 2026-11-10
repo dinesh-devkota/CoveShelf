@@ -132,11 +132,11 @@ class LibraryScanner(
 
     private fun newEntry(sourceId: String, file: RemoteFile): MovieEntity {
         val parsed = FilenameParser.parse(file.path)
-        val music = MediaFile.kind(file.path) == MediaKind.MUSIC
-        val title = if (music) file.fileName.substringBeforeLast('.') else parsed.title
+        val audio = MediaFile.isAudio(file.path)
+        val title = if (audio) file.fileName.substringBeforeLast('.') else parsed.title
         return MovieEntity(sourceId = sourceId, filePath = file.path, fileName = file.fileName, fileSize = file.size,
-            parsedTitle = title, parsedYear = if (music) null else parsed.year, tmdbId = if (music) null else parsed.tmdbId,
-            year = if (music) null else parsed.year, title = if (music) title else LibrarySync.initialTitle(file, parsed),
-            metadataFetched = music)
+            parsedTitle = title, parsedYear = if (audio) null else parsed.year, tmdbId = if (audio) null else parsed.tmdbId,
+            year = if (audio) null else parsed.year, title = if (audio) title else LibrarySync.initialTitle(file, parsed),
+            metadataFetched = audio)
     }
 }

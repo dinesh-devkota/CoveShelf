@@ -13,14 +13,25 @@ object MediaFile {
     private fun isTypeScriptDeclaration(path: String) = parts(path).lastOrNull()?.endsWith(".d.ts", ignoreCase = true) == true
     fun isAudio(path: String): Boolean = extension(path) in audio
     fun kind(path: String, genres: List<String> = emptyList(), matched: Boolean = false,
-             isEpisode: Boolean = EpisodeParser.parse(path) != null): MediaKind = when {
-        isAudio(path) -> MediaKind.MUSIC
-        isEpisode -> MediaKind.TV_SHOW
-        matched && genres.any { it.equals("Documentary", true) } -> MediaKind.DOCUMENTARY
-        matched && genres.any { it.equals("Music", true) } -> MediaKind.MUSIC
-        matched -> MediaKind.MOVIE
-        parts(path).dropLast(1).any { it.equals("documentary", true) || it.equals("documentaries", true) } -> MediaKind.DOCUMENTARY
-        else -> MediaKind.MOVIE
+             isEpisode: Boolean = EpisodeParser.parse(path) != null): MediaKind {
+        if (isAudio(path)) return MediaKind.MUSIC
+        if (isEpisode) return MediaKind.TV_SHOW
+        if (matched) {
+            if (genres.any { it.trim().equals("Documentary", true) }) return MediaKind.DOCUMENTARY
+            if (genres.any { it.trim().equals("Music", true) }) return MediaKind.MUSIC
+            if (genres.any { it.isNotBlank() }) return MediaKind.MOVIE
+        }
+        return parts(path).dropLast(1).asReversed().firstNotNullOfOrNull(::folderKind) ?: MediaKind.MOVIE
+    }
+
+    private fun folderKind(folder: String): MediaKind? {
+        val label = folder.lowercase(Locale.ROOT).filterNot { it.isWhitespace() || it in "._-" }
+        return when (label) {
+            "documentary", "documentaries", "documentaryfilms", "documentarymovies" -> MediaKind.DOCUMENTARY
+            "music", "musicvideos", "concerts", "concertfilms", "concertvideos" -> MediaKind.MUSIC
+            "movies", "films" -> MediaKind.MOVIE
+            else -> null
+        }
     }
     fun shouldSkipDirectory(name: String): Boolean {
         val lower = name.trim().lowercase(Locale.ROOT)

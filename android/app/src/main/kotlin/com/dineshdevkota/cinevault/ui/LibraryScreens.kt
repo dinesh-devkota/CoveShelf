@@ -56,6 +56,7 @@ import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import com.dineshdevkota.cinevault.container
 import com.dineshdevkota.cinevault.core.LibraryFilter
+import com.dineshdevkota.cinevault.core.LibraryFacets
 import com.dineshdevkota.cinevault.core.MediaKind
 import com.dineshdevkota.cinevault.core.LibraryQuery
 import com.dineshdevkota.cinevault.core.LibrarySort
@@ -273,24 +274,26 @@ private fun MoviesTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
     val sources by remember { container.database.sources().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
     var sort by remember { mutableStateOf(settings.librarySort) }
     var filter by remember { mutableStateOf(settings.libraryFilter) }
-    var genre by remember { mutableStateOf(settings.libraryGenre) }
-    var sourceId by remember { mutableStateOf(settings.librarySourceId) }
-    var decade by remember { mutableStateOf(settings.libraryDecade) }
+    var facets by remember { mutableStateOf(settings.libraryFacets) }
+    fun saveFacets(value: LibraryFacets) {
+        facets = value
+        settings.libraryFacets = value
+    }
     var kind by rememberSaveable { mutableStateOf(MediaKind.MOVIE) }
     val collection = remember(movies, kind) { movies.filter { it.mediaKind == kind } }
-    val genres = remember(movies) { listOf<String?>(null) + LibraryQuery.genres(movies) }
-    val decades = remember(movies) { listOf<Int?>(null) + LibraryQuery.decades(movies) }
+    val genres = remember(collection, filter, facets.genres) { (LibraryQuery.genres(collection, filter) + facets.genres).distinct().sorted() }
+    val decades = remember(collection, filter, facets.decades) { (LibraryQuery.decades(collection, filter) + facets.decades).distinct().sortedDescending() }
+    val sourceNames = remember(sources) { sources.orEmpty().associate { it.id to it.name } }
     // Wait for the first source result before clearing a saved selection. An empty
     // loading placeholder must not erase the user's preference on every launch.
-    val selectedSourceId = sourceId.takeIf { id -> sources?.any { it.id == id } != false }
-    LaunchedEffect(sources, sourceId) {
-        if (sources != null && selectedSourceId != sourceId) {
-            sourceId = null
-            settings.librarySourceId = null
+    LaunchedEffect(sources, facets.sourceIds) {
+        if (sources != null) {
+            val available = facets.sourceIds.intersect(sourceNames.keys)
+            if (available != facets.sourceIds) saveFacets(facets.copy(sourceIds = available))
         }
     }
-    val visible = remember(collection, sort, filter, genre, selectedSourceId, decade) {
-        LibraryQuery.visible(collection, sort, filter, genre, selectedSourceId, decade)
+    val visible = remember(collection, sort, filter, facets) {
+        LibraryQuery.visible(collection, sort, filter, facets)
     }
     val tvShows = remember(visible, kind) { if (kind == MediaKind.TV_SHOW) groupTVShows(visible) else emptyList() }
 
@@ -306,34 +309,36 @@ private fun MoviesTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CycleButton("Sort", sort, LibrarySort.entries, { it.label }, {
-                    sort = it
-                    settings.librarySort = it
-                })
-                CycleButton("Show", filter, LibraryFilter.entries, { it.label }, {
-                    filter = it
-                    settings.libraryFilter = it
-                })
-                CycleButton("Genre", genre, genres, { it ?: "All" }, {
-                    genre = it
-                    settings.libraryGenre = it
-                }, Modifier.width(240.dp))
+                LibraryFilterMenu("Sort", setOf(sort), LibrarySort.entries, { it.label }, {
+                    sort = it.single()
+                    settings.librarySort = sort
+                }, Modifier.weight(1f))
+                LibraryFilterMenu("Show", setOf(filter), LibraryFilter.entries, { it.label }, {
+                    filter = it.single()
+                    settings.libraryFilter = filter
+                }, Modifier.weight(1f))
+                LibraryFilterMenu("Genre", facets.genres, genres, { it }, {
+                    saveFacets(facets.copy(genres = it))
+                }, Modifier.weight(1f), allLabel = "All genres")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CycleButton("Source", selectedSourceId, listOf<String?>(null) + sources.orEmpty().map { it.id }, { id ->
-                    sources?.firstOrNull { it.id == id }?.name ?: "All sources"
-                }, {
-                    sourceId = it
-                    settings.librarySourceId = it
-                }, Modifier.width(320.dp))
-                CycleButton("Decade", decade, decades, { it?.let { year -> "${year}s" } ?: "All decades" }, {
-                    decade = it
-                    settings.libraryDecade = it
-                })
-                CycleButton("Section", kind, MediaKind.entries, { it.label }, {
-                    kind = it
-                    genre = null; decade = null; filter = LibraryFilter.ALL
-                })
+                LibraryFilterMenu("Source", facets.sourceIds, sourceNames.keys.toList(), { sourceNames[it] ?: "Loading…" }, {
+                    saveFacets(facets.copy(sourceIds = it))
+                }, Modifier.weight(1.25f), allLabel = "All sources")
+                LibraryFilterMenu("Decade", facets.decades, decades, { "${it}s" }, {
+                    saveFacets(facets.copy(decades = it))
+                }, Modifier.weight(1f), allLabel = "All decades")
+                LibraryFilterMenu("Section", setOf(kind), MediaKind.entries, { it.label }, {
+                    kind = it.single()
+                }, Modifier.weight(1.2f))
+                OutlinedButton(
+                    enabled = facets != LibraryFacets() || filter != LibraryFilter.ALL,
+                    onClick = {
+                        saveFacets(LibraryFacets())
+                        filter = LibraryFilter.ALL
+                        settings.libraryFilter = filter
+                    },
+                ) { Text("Clear filters") }
             }
         }
         Box(Modifier.weight(1f)) {

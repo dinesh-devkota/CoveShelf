@@ -53,6 +53,18 @@ class TmdbTest {
         assertNull(TitleMatcher.bestMatch("Heat", 1995, candidates))
     }
 
+    @Test fun releaseYearAloneCannotMakeAWeakTitleMatch() {
+        val candidate = TmdbMovieSummary(id = 1, title = "Airlift", releaseDate = "2016-01-22")
+        assertNull(TitleMatcher.bestMatch("Arrival", 2016, listOf(candidate)))
+    }
+
+    @Test fun shortTitlesMustMatchTheDisplayOrOriginalTitle() {
+        val similar = TmdbMovieSummary(id = 1, title = "Us", releaseDate = "2009-01-01")
+        val exact = TmdbMovieSummary(id = 2, title = "Là-haut", originalTitle = "Up")
+        assertNull(TitleMatcher.bestMatch("Up", 2009, listOf(similar)))
+        assertEquals(2, TitleMatcher.bestMatch("UP!", 2009, listOf(similar, exact))?.id)
+    }
+
     @Test fun matcherRejectsTitlesWithoutSearchableCharacters() {
         val candidates = listOf(TmdbMovieSummary(id = 603, title = "The Matrix", releaseDate = "1999-03-30"))
         for (title in listOf("", "   ", "!!!")) {

@@ -104,6 +104,15 @@ class LibraryTest {
         assertEquals(5, LibraryQuery.visible(items, LibrarySort.TITLE, LibraryFilter.ALL, null).size)
     }
 
+    @Test fun multipleChoicesMatchAnyValueInEachFieldAndEveryActiveField() {
+        val crime = Entry("Crime film", year = 1995, sourceId = "nas-a", genres = listOf("Crime"))
+        val drama = Entry("Drama film", year = 2022, sourceId = "nas-b", genres = listOf("Family", "Drama"))
+        val items = listOf(crime, drama, crime.copy(sourceId = "nas-c"), drama.copy(year = 1980),
+            drama.copy(genres = listOf("Comedy")), crime.copy(isMissing = true), drama.copy(isHidden = true))
+        val facets = LibraryFacets(setOf("Crime", "Drama"), setOf("nas-a", "nas-b"), setOf(1990, 2020))
+        assertEquals(listOf(crime, drama), LibraryQuery.visible(items, LibrarySort.TITLE, LibraryFilter.ALL, facets))
+    }
+
     @Test fun hiddenFilterStillHonorsSourceAndDecadeAndExcludesMissing() {
         val selected = Entry("Hidden", year = 1995, sourceId = "nas", isHidden = true, isWatchlisted = true)
         val items = listOf(
@@ -116,6 +125,14 @@ class LibraryTest {
         )
         assertTrue(LibraryQuery.watchlist(items).isEmpty())
         assertTrue(selected.isWatchlisted)
+    }
+
+    @Test fun hiddenTitlesContributeTheirOwnGenresAndDecades() {
+        val item = Entry("Hidden", year = 1985, genres = listOf("Comedy"), isHidden = true)
+        val items = listOf(heat, item, item.copy(year = 1975, genres = listOf("War"), isMissing = true))
+        assertEquals(listOf("Comedy"), LibraryQuery.genres(items, LibraryFilter.HIDDEN))
+        assertEquals(listOf(1980), LibraryQuery.decades(items, LibraryFilter.HIDDEN))
+        assertEquals(listOf("Crime"), LibraryQuery.genres(items))
     }
 
     @Test fun watchlistKeepsWatchedAndInProgressMoviesAndSortsByTitle() {

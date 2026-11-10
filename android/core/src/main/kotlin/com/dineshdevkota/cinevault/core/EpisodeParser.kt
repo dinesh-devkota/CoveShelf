@@ -12,7 +12,10 @@ object EpisodeParser {
         Regex("""(?<![\p{L}\p{N}])(\d{1,2})\s*x\s*(\d{1,4})(?=$|[^\p{L}\p{N}])""", RegexOption.IGNORE_CASE),
     )
     private val seasonFolder = Regex("""^(?:(.+?)[ ._-]+)?Season[ ._-]*(\d{1,4})$""", RegexOption.IGNORE_CASE)
-    private val numberedFile = Regex("""^(\d{1,4})\s*[-–—]\s*\S""")
+    private val seasonEpisodeNumbers = listOf(
+        Regex("""^(\d{1,4})\s*[-–—]\s*\S"""),
+        Regex("""^E(?:pisode)?[ ._-]*(\d{1,4})(?=$|[ ._–—-])""", RegexOption.IGNORE_CASE),
+    )
     private val genericFolders = setOf("tv", "tvshows", "tvseries", "shows", "series", "television",
         "movies", "movie", "documentaries", "documentary", "videos", "video", "media", "library", "seasons")
     private val tvRoots = setOf("tv", "tvshows", "tvseries", "shows", "series", "television")
@@ -40,7 +43,8 @@ object EpisodeParser {
                 .trim(' ', '.', '_', '-', '[', ']', '(', ')', '{', '}').takeIf(String::isNotBlank)
         } else {
             season = folderSeason ?: return null
-            episode = numberedFile.find(filename)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+            val number = seasonEpisodeNumbers.firstNotNullOfOrNull { it.find(filename) } ?: return null
+            episode = number.groupValues[1].toIntOrNull() ?: return null
             if (episode !in 0..999) return null
             prefix = null
         }

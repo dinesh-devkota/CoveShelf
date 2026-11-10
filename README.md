@@ -22,7 +22,7 @@ device and NAS validation has not yet been completed.
 - Posters, backdrops, overview, genres, runtime and rating from TMDB (your own free API key).
 - Cinematic Apple TV browsing with backdrop artwork, landscape Continue Watching cards, focus-aware posters, a movie detail screen, and a dark, uncluttered interface.
 - Home (Continue Watching / Recently Added / Unwatched), full library grid with sort + filter + genre, and search.
-- Personal Watchlist with a Home shelf and library filter. Saved source, genre, and decade filters help browse larger NAS libraries.
+- Personal Watchlist with a Home shelf and library filter. Select multiple genres, sources, or decades and save the combination. [Browse with filters](docs/MEDIA-GUIDE.md#browse-with-filters)
 - Streaming playback with AVPlayer via a custom resource loader that serves byte ranges straight from SMB — instant start and seeking, nothing is downloaded first.
 - Resume position, watched state (automatic after 92%), progress bars. Replaying a watched movie makes it resumable again.
 - Manage entries: rename, fix match (search TMDB and pick), hide, reset progress, reset to file name.
@@ -97,7 +97,7 @@ Everything builds on GitHub's macOS runners:
    signing credentials.
 
 For a visual check without a Mac, run **UI preview** from the Actions tab and download the
-`cinevault-ui-preview` artifact. It captures the home and movie detail screens using an
+`cinevault-ui-preview` artifact. It captures Home, movie details, and the Genre picker using an
 in-memory sample library with placeholder artwork; it never connects to a NAS or changes
 your real collection. The workflow checks for screen-specific text before accepting each
 capture, and uploads diagnostic screenshots if a preview fails.

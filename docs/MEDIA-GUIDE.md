@@ -69,6 +69,11 @@ grouping does not require an artwork key or another scan after an app update.
 Unnumbered extras need a season/episode marker, such as `S00E01`, to appear in
 the show's **Specials** season.
 
+A numbered season folder can supply the season when the filename supplies the
+episode, as in `TV Shows/24/Season 02/E03.mkv`. Without matched genres,
+`Documentary Films`, `Music Videos`, and `Concerts` also work as category folders.
+A concert video can fetch a poster and description like other films.
+
 For audio music, consistent artist and album folders help identify the files.
 TMDB is not an audio album catalog: its Music category describes screen content
 such as music films, not MP3 artist, album, or cover-art information.
@@ -85,10 +90,26 @@ Matching provides real titles, descriptions, posters, and categories. A matched
 movie's metadata takes priority over folder-name guesses when classifying movies,
 documentaries, and music-related films.
 
+Automatic matching checks the title before using the release year to rank
+candidates. For short titles such as *Up*, the normalized display title or
+original title must match exactly.
+If a previously matched film has the wrong poster or genres, open its detail
+screen, choose **Edit**, and use **Fix Match** to select the correct film.
+
 Without a key, new unmatched items use filename/folder information and placeholder
 artwork. A folder label alone cannot identify the correct movie. If an item is
 unknown or incorrectly matched, check its title and year and use the manual match
 correction. Different films or series can share the same name.
+
+## Browse with filters
+
+Open a library section and choose **Genre**, **Source**, or **Decade** to see
+the available choices. Check as many as you want, then choose **Apply**.
+**Back** cancels the changes in the open list.
+
+For example, choosing *Comedy* and *Drama* includes titles in either genre.
+Adding the *1990s* narrows those titles to that decade. Choose **Clear filters**
+to see the whole section again. **Sort** changes the order of the results.
 
 ## Check the scan and playback
 

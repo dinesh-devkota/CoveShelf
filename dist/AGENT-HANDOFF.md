@@ -460,3 +460,34 @@ documentation; its application source is identical to the validated revision.
   failures and the [Home, detail and NAS previews](https://github.com/dinesh-devkota/CineVault/actions/runs/42894312382/artifacts/13800816235).
   The public app is ready to fast-forward to `main`. Physical Apple TV playback
   remains pending the owner's TestFlight setup.
+
+### November 10, 2026 — library browsing update
+
+- Public development and main were brought to `d0a1415`. All three default-branch
+  workflows passed, including [CI](https://github.com/dinesh-devkota/CineVault/actions/runs/42896103979),
+  [NAS integration](https://github.com/dinesh-devkota/CineVault/actions/runs/42896103732), and
+  [Android TV](https://github.com/dinesh-devkota/CineVault/actions/runs/42896103888).
+- The owner requested friendlier browsing and classification, and explicitly
+  chose multiple selections per filter. Genre, Source and Decade now use lists
+  with checked selections and Apply/Cancel. Sort, Show and Section allow direct
+  selection. Clear filters preserves the chosen section and sorting.
+- Existing single selections load into the new sets. Multiple choices match
+  any selected value in one field and must satisfy each active field. Option
+  lists include the current section's available genres and decades, including
+  hidden titles when browsing Hidden.
+- The classification rules recognize documentary-film, concert and music-video
+  folders, preserve folder hints when matched metadata has no genres, and accept
+  explicit episode-only names inside numbered season folders. Concert videos
+  remain eligible for film metadata. Automatic matching requires sufficient
+  title similarity before using a year bonus and exact normalized titles for
+  names of three characters or fewer.
+- Reviewed [Infuse releases](https://firecore.com/releases) and
+  [Jellyfin Android TV 0.20](https://jellyfin.org/posts/androidtv-v0.20.0/) for
+  browsing improvements. The owner specified
+  [OpenSweep](https://github.com/yashrajnayak/OpenSweep) as a coding/build reference.
+  Its explicit checklists, focused self-tests and packaged-app validation informed
+  the implementation and validation.
+- The Android filter navigation checks passed on a separate empty test TV,
+  including multiple selections, saved preferences, Back cancellation, source
+  removal and applying with the remote. Apple preview workflows now capture the
+  production Genre picker with Adventure and Drama checked.

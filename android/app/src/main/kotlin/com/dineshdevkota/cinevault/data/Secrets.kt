@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.core.content.edit
 import com.dineshdevkota.cinevault.core.LibraryFilter
+import com.dineshdevkota.cinevault.core.LibraryFacets
 import com.dineshdevkota.cinevault.core.LibrarySort
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -88,18 +89,20 @@ class Settings(context: Context, private val secrets: SecretBox) {
         get() = enumValue(FILTER_KEY, LibraryFilter.ALL)
         set(value) = prefs.edit { putString(FILTER_KEY, value.name) }
 
-    var libraryGenre: String?
-        get() = prefs.getString(GENRE_KEY, null)
-        set(value) = prefs.edit { putString(GENRE_KEY, value) }
-
-    var librarySourceId: String?
-        get() = prefs.getString(SOURCE_KEY, null)
-        set(value) = prefs.edit { putString(SOURCE_KEY, value) }
-
-    var libraryDecade: Int?
-        get() = prefs.getInt(DECADE_KEY, -1).takeIf { it > 0 && it % 10 == 0 }
+    var libraryFacets: LibraryFacets
+        get() = LibraryFacets(
+            genres = prefs.getStringSet(GENRES_KEY, null)?.toSet() ?: setOfNotNull(prefs.getString(GENRE_KEY, null)),
+            sourceIds = prefs.getStringSet(SOURCES_KEY, null)?.toSet() ?: setOfNotNull(prefs.getString(SOURCE_KEY, null)),
+            decades = prefs.getStringSet(DECADES_KEY, null)?.mapNotNull { it.toIntOrNull() }?.toSet()
+                ?: setOfNotNull(prefs.getInt(DECADE_KEY, -1).takeIf { it > 0 && it % 10 == 0 }),
+        )
         set(value) = prefs.edit {
-            if (value == null) remove(DECADE_KEY) else putInt(DECADE_KEY, value)
+            putStringSet(GENRES_KEY, value.genres.toSet())
+            putStringSet(SOURCES_KEY, value.sourceIds.toSet())
+            putStringSet(DECADES_KEY, value.decades.map { it.toString() }.toSet())
+            remove(GENRE_KEY)
+            remove(SOURCE_KEY)
+            remove(DECADE_KEY)
         }
 
     private inline fun <reified T : Enum<T>> enumValue(key: String, default: T): T =
@@ -112,5 +115,8 @@ class Settings(context: Context, private val secrets: SecretBox) {
         const val GENRE_KEY = "library_genre"
         const val SOURCE_KEY = "library_source"
         const val DECADE_KEY = "library_decade"
+        const val GENRES_KEY = "library_genres"
+        const val SOURCES_KEY = "library_sources"
+        const val DECADES_KEY = "library_decades"
     }
 }

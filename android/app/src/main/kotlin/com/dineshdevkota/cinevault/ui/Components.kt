@@ -216,24 +216,6 @@ fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** A D-pad friendly picker: each press selects the next option. */
-@Composable
-fun <T> CycleButton(
-    label: String,
-    value: T,
-    options: List<T>,
-    text: (T) -> String,
-    onChange: (T) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedButton(
-        onClick = { if (options.isNotEmpty()) onChange(options[(options.indexOf(value) + 1) % options.size]) },
-        modifier = modifier,
-    ) {
-        Text("$label: ${text(value)}", maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
 /** Arrow keys move focus off the field; the centre button opens the on-screen keyboard. */
 @Composable
 fun TvTextField(

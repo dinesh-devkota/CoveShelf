@@ -71,6 +71,17 @@ enum class LibraryFilter(val label: String) {
     }
 }
 
+data class LibraryFacets(
+    val genres: Set<String> = emptySet(),
+    val sourceIds: Set<String> = emptySet(),
+    val decades: Set<Int> = emptySet(),
+) {
+    fun matches(entry: LibraryEntry): Boolean =
+        (genres.isEmpty() || entry.genres.any { it in genres }) &&
+            (sourceIds.isEmpty() || entry.sourceId in sourceIds) &&
+            (decades.isEmpty() || entry.year?.let { it / 10 * 10 } in decades)
+}
+
 object LibraryQuery {
     fun <T : LibraryEntry> visible(
         items: List<T>,
@@ -79,12 +90,10 @@ object LibraryQuery {
         genre: String?,
         sourceId: String? = null,
         decade: Int? = null,
-    ): List<T> = sort.sort(items.filter {
-        !it.isMissing && filter.matches(it) &&
-            (genre == null || genre in it.genres) &&
-            (sourceId == null || sourceId == it.sourceId) &&
-            (decade == null || it.year?.let { year -> year / 10 * 10 } == decade)
-    })
+    ): List<T> = visible(items, sort, filter, LibraryFacets(setOfNotNull(genre), setOfNotNull(sourceId), setOfNotNull(decade)))
+
+    fun <T : LibraryEntry> visible(items: List<T>, sort: LibrarySort, filter: LibraryFilter, facets: LibraryFacets): List<T> =
+        sort.sort(items.filter { !it.isMissing && filter.matches(it) && facets.matches(it) })
 
     /** Hidden and missing movies never appear in search. */
     fun searchMatches(entry: LibraryEntry, text: String): Boolean {
@@ -95,12 +104,14 @@ object LibraryQuery {
             entry.fileName.contains(text, ignoreCase = true)
     }
 
-    fun genres(items: List<LibraryEntry>): List<String> = items.flatMap { it.genres }.toSortedSet().toList()
+    fun genres(items: List<LibraryEntry>, filter: LibraryFilter = LibraryFilter.ALL): List<String> = items.asSequence()
+        .filter { !it.isMissing && filter.matches(it) }
+        .flatMap { it.genres }.filter { it.isNotBlank() }.toSortedSet().toList()
 
-    /** Newest decades first; unknown years and unavailable movies do not add filter choices. */
-    fun decades(items: List<LibraryEntry>): List<Int> = items
-        .filter { !it.isMissing && !it.isHidden }
-        .mapNotNull { it.year?.let { year -> year / 10 * 10 } }
+    /** Newest decades first. A hidden title contributes options when browsing Hidden. */
+    fun decades(items: List<LibraryEntry>, filter: LibraryFilter = LibraryFilter.ALL): List<Int> = items
+        .filter { !it.isMissing && filter.matches(it) }
+        .mapNotNull { it.year?.takeIf { year -> year > 0 }?.let { year -> year / 10 * 10 } }
         .distinct()
         .sortedDescending()
 

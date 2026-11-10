@@ -3,6 +3,7 @@ package com.dineshdevkota.cinevault.library
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dineshdevkota.cinevault.core.MediaKind
 import com.dineshdevkota.cinevault.core.RemoteFile
 import com.dineshdevkota.cinevault.data.CineVaultDatabase
 import com.dineshdevkota.cinevault.data.MovieEntity
@@ -34,6 +35,20 @@ class LibraryScannerTest {
 
     @After
     fun tearDown() = database.close()
+
+    @Test fun concertVideoKeepsItsParsedYearAndRemainsEligibleForMetadata() = runBlocking {
+        val source = SourceEntity(name = "Media", host = "localhost", share = "Media")
+        database.sources().upsert(source)
+        val scanner = LibraryScanner(database, SecretBox(), scanVideos = {
+            listOf(RemoteFile("Concerts/Stage Show (2019).mp4", 100))
+        })
+        scanner.scan(source.id)
+        val movie = database.movies().forSource(source.id).single()
+        assertEquals(MediaKind.MUSIC, movie.mediaKind)
+        assertEquals("Stage Show", movie.parsedTitle)
+        assertEquals(2019, movie.parsedYear)
+        assertFalse(movie.metadataFetched)
+    }
 
     @Test
     fun editedSourceDiscardsOldShareResults() = runBlocking {

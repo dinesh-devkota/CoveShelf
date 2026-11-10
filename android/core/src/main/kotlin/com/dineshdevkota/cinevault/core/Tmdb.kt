@@ -116,18 +116,20 @@ object TitleMatcher {
         return 1.0 - previous[y.length].toDouble() / maxOf(x.length, y.length)
     }
 
-    fun score(candidate: TmdbMovieSummary, title: String, year: Int?): Double {
-        var score = maxOf(similarity(candidate.title, title), similarity(candidate.originalTitle ?: "", title))
-        val candidateYear = candidate.year
-        if (year != null && candidateYear != null) {
-            score += when (abs(year - candidateYear)) {
-                0 -> 0.3
-                1 -> 0.15
-                else -> -0.3
-            }
+    private fun titleSimilarity(candidate: TmdbMovieSummary, title: String): Double =
+        maxOf(similarity(candidate.title, title), similarity(candidate.originalTitle.orEmpty(), title))
+
+    private fun yearAdjustment(year: Int?, candidateYear: Int?): Double {
+        if (year == null || candidateYear == null) return 0.0
+        return when (abs(year - candidateYear)) {
+            0 -> 0.3
+            1 -> 0.15
+            else -> -0.3
         }
-        return score
     }
+
+    fun score(candidate: TmdbMovieSummary, title: String, year: Int?): Double =
+        titleSimilarity(candidate, title) + yearAdjustment(year, candidate.year)
 
     fun bestMatch(
         title: String,
@@ -135,12 +137,17 @@ object TitleMatcher {
         candidates: List<TmdbMovieSummary>,
         threshold: Double = 0.5,
     ): TmdbMovieSummary? {
-        if (normalize(title).isEmpty()) return null
+        val normalizedTitle = normalize(title)
+        if (normalizedTitle.isEmpty()) return null
+        // For very short names a single changed letter often identifies a different film.
+        val minimumTitleScore = if (normalizedTitle.length <= 3) 1.0 else threshold
         // Earlier results win ties because TMDB orders by popularity.
         var best: TmdbMovieSummary? = null
         var bestScore = -1.0
         for (candidate in candidates) {
-            val value = score(candidate, title, year)
+            val titleScore = titleSimilarity(candidate, normalizedTitle)
+            if (titleScore < minimumTitleScore) continue
+            val value = titleScore + yearAdjustment(year, candidate.year)
             if (value > bestScore) {
                 best = candidate
                 bestScore = value

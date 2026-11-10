@@ -9,7 +9,24 @@ class MediaFileTest {
         assertEquals(MediaKind.DOCUMENTARY, MediaFile.kind("Media/DoCuMeNtArIeS/Nature/Film.MP4"))
         assertEquals(MediaKind.DOCUMENTARY, MediaFile.kind("Media\\DOCUMENTARY\\Film.mp4"))
         assertEquals(MediaKind.MUSIC, MediaFile.kind("Documentaries/Soundtracks/Track.FLAC"))
-        assertEquals(MediaKind.MOVIE, MediaFile.kind("Documentary Films/Film.mp4"))
+        assertEquals(MediaKind.DOCUMENTARY, MediaFile.kind("Documentary Films/Film.mp4"))
+    }
+
+    @Test fun closestCollectionLabelsClassifyVideosWithoutGuessingFromTitles() {
+        assertEquals(MediaKind.MUSIC, MediaFile.kind("""Media\Movies\MUSIC_VIDEOS\Band\Performance.mkv"""))
+        assertEquals(MediaKind.MUSIC, MediaFile.kind("Music/Concerts/Performance.mp4"))
+        assertEquals(MediaKind.MOVIE, MediaFile.kind("Music/Movies/Drama.mp4"))
+        assertEquals(MediaKind.DOCUMENTARY, MediaFile.kind("Concerts/Documentary-Movies/Band.mp4"))
+        assertEquals(MediaKind.MOVIE, MediaFile.kind("Music Box/The Documentary.mp4"))
+        assertEquals(MediaKind.MOVIE, MediaFile.kind("The Concert (2009)/Music Videos.mp4"))
+    }
+
+    @Test fun missingGenreDataKeepsFolderEvidenceUntilTheMatchSuppliesAGenre() {
+        val path = "Documentary Films/Interview.mp4"
+        assertEquals(MediaKind.DOCUMENTARY, MediaFile.kind(path, listOf("  "), matched = true))
+        assertEquals(MediaKind.MUSIC, MediaFile.kind(path, listOf("  mUsIc "), matched = true))
+        assertEquals(MediaKind.MOVIE, MediaFile.kind(path, listOf("Drama"), matched = true))
+        assertEquals(MediaKind.TV_SHOW, MediaFile.kind("Concerts/Example.S01E03.mp4", listOf("Music"), true))
     }
     @Test fun indexesShortVideosAndAudioWithoutAdmittingEmptyOrUnsupportedFiles() {
         assertTrue(MediaFile.shouldIndex("Movies/Short.mp4", 100))

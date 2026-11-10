@@ -99,6 +99,14 @@ private fun MediaGuideScreen() {
         }
         item {
             GuideSection(
+                "Library filters",
+                "Open Genre, Source or Decade, select several choices, then choose Apply. " +
+                    "Selecting Comedy and Drama shows titles in either genre. Add a decade to narrow the results. " +
+                    "Back cancels your edits. Clear filters shows the whole section again.",
+            )
+        }
+        item {
+            GuideSection(
                 "Supported playback formats",
                 "Video: MP4, M4V, MOV, MKV, WebM, AVI, standard MPEG-TS, MPEG-PS, and FLV. " +
                     "Audio: MP3, M4A, AAC, FLAC, WAV, Ogg, and Opus. The TV must also support the codecs " +

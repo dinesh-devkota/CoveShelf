@@ -34,6 +34,10 @@ struct MediaGuideView: View {
                 Text("Use S01E01-style episode names. Open a show's poster, choose a season, then an episode. Keep audio music in artist/album folders. TMDB's Music category is for screen content; it does not provide an MP3 album catalog.")
                     .focusable()
             }
+            Section("Library filters") {
+                Text("Open Genre, Source or Decade, select several choices, then choose Apply. Comedy and Drama shows titles in either genre. Add a decade to narrow the results. Back cancels your edits. Clear filters shows the whole section again.")
+            }
+
             Section("Supported playback formats") {
                 Text("Video: MP4, M4V, and MOV. Audio: MP3, M4A, AAC, FLAC, WAV, and AIFF/AIF. Apple TV checks whether it can play the file before starting. Other media containers can be cataloged but do not have Play controls in this app. TypeScript .ts and .d.ts files are not media.")
                     .focusable()

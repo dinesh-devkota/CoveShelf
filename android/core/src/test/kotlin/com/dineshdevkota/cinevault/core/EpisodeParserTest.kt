@@ -26,6 +26,16 @@ class EpisodeParserTest {
             assertNull(path, EpisodeParser.parse(path))
         }
     }
+
+    @Test fun episodeOnlyLabelsRequireAnExplicitSeasonFolder() {
+        val expected = EpisodeInfo("Example", 2, 3)
+        for (file in listOf("E03.Finale.mkv", "Episode 03 - Finale.mp4", "episode_003.mp4")) {
+            assertEquals(expected, EpisodeParser.parse("TV Shows/Example/Season 02/$file"))
+            assertNull(EpisodeParser.parse("Movies/$file"))
+        }
+        assertNull(EpisodeParser.parse("TV Shows/Example/Season 02/Episode 2024.mp4"))
+        assertNull(EpisodeParser.parse("TV Shows/Example/Season 02/E03rd Eye.mp4"))
+    }
     @Test fun rejectsYearsResolutionsAndOutOfRangeNumbers() {
         for (path in listOf("Movies/Film.2024.1080p.mkv", "Show/Season02/2024 - Film.mkv", "Show/Season02/1080p.mkv",
             "Show.1920x1080.mkv", "Show.S1000E01.mkv", "Show.S01E1000.mkv", "Show/Season1000/02 - Title.mkv")) {
