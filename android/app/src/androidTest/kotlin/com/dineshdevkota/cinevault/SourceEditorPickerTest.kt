@@ -8,7 +8,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -16,6 +19,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -39,6 +43,33 @@ class SourceEditorPickerTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val application = ApplicationProvider.getApplicationContext<CineVaultApp>()
     private val container get() = application.container
+
+    @Test
+    fun malformedPortDisablesBothPickersUntilCorrectedWhileManualPathStaysEditable() {
+        // A fresh draft needs neither a saved source nor a network connection.
+        ActivityScenario.launch(SourceEditorActivity::class.java).use {
+            fill("Host or IP (e.g. 192.168.1.20)", "smb://nas.example:1445")
+            fill("Share (e.g. media)", "media")
+            picker("Choose scan folder ▾").assertIsEnabled()
+            picker("Choose folders or files to ignore ▾").assertIsEnabled()
+            fill("Port (optional, default 445)", "bad-port")
+            label("Port must be a number from 1 to 65535.")
+            picker("Choose scan folder ▾").assertIsNotEnabled()
+            picker("Choose folders or files to ignore ▾").assertIsNotEnabled()
+            press("Enter folder path manually")
+            fill("Folder inside share (empty for share root)", "Movies")
+            fill("Port (optional, default 445)", "1445")
+            picker("Choose scan folder ▾").assertIsEnabled()
+            picker("Choose folders or files to ignore ▾").assertIsEnabled()
+            fill("Port (optional, default 445)", "70000")
+            picker("Choose scan folder ▾").assertIsNotEnabled()
+            picker("Choose folders or files to ignore ▾").assertIsNotEnabled()
+            // Empty means use the address's embedded port (or the SMB default when absent).
+            fill("Port (optional, default 445)", "")
+            picker("Choose scan folder ▾").assertIsEnabled()
+            picker("Choose folders or files to ignore ▾").assertIsEnabled()
+        }
+    }
 
     @Test
     fun editPickersPersistFolderAndFileExclusionsAndScanTheSelectedRoot() = runBlocking<Unit> {
@@ -105,6 +136,12 @@ class SourceEditorPickerTest {
     }
 
     private fun label(text: String) = visible(hasText(text))
+
+    private fun picker(text: String) = visible(hasText(text) and hasClickAction())
+
+    private fun fill(label: String, value: String) {
+        visible(hasText(label) and hasSetTextAction()).performTextReplacement(value)
+    }
 
     private fun press(text: String, match: SemanticsMatcher = hasClickAction()) {
         visible(hasText(text) and match and isEnabled()).performSemanticsAction(SemanticsActions.OnClick)

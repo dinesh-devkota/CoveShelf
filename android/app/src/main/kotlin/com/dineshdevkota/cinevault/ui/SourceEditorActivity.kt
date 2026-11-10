@@ -133,43 +133,39 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
         if (firstFieldReady && windowFocused && !initialFocusSet) initialFocusSet = firstField.requestFocus()
     }
 
-    fun config(): SourceConfig? {
+    // This pure validation also gates browsing, so a malformed nonempty port cannot silently
+    // turn into the default port. Keep all draft values unchanged until the user corrects them.
+    fun validatedConfig(): SourceConfig {
         val portText = port.trim()
         val portValue = portText.toIntOrNull()?.takeIf { it in 1..65535 }
-        if (portText.isNotEmpty() && portValue == null) {
-            message = "Port must be a number from 1 to 65535."
-            messageIsError = true
-            return null
-        }
+        require(portText.isEmpty() || portValue != null) { "Port must be a number from 1 to 65535." }
         val hostValue = host.trim()
         val shareValue = share.trim().trim('/', '\\')
-        if (hostValue.isEmpty() || shareValue.isEmpty()) {
-            message = "Enter the NAS address and share name."
-            messageIsError = true
-            return null
+        require(hostValue.isNotEmpty() && shareValue.isNotEmpty()) {
+            "Enter the NAS address and share name."
         }
-        if (rootPath.replace('\\', '/').split('/').any { it == ".." }) {
-            message = "Choose a folder inside the shared folder."
-            messageIsError = true
-            return null
+        require(rootPath.replace('\\', '/').split('/').none { it == ".." }) {
+            "Choose a folder inside the shared folder."
         }
-        val address = try { NasAddress.parse(hostValue, portValue) }
-        catch (failure: IllegalArgumentException) {
-            message = failure.message
-            messageIsError = true
-            return null
-        }
+        val address = NasAddress.parse(hostValue, portValue)
         return SourceConfig(
             id = existing?.id ?: draftId,
             host = address.host,
             port = address.port,
             share = shareValue,
-            rootPath = rootPath.trim().trim('/', '\\', ' '),
+            rootPath = rootPath.trim().replace('\\', '/').trim('/'),
             username = username.trim(),
             password = password,
             ignoredFolders = ignoredFolders,
             ignoredFiles = ignoredFiles,
         )
+    }
+
+    fun config(): SourceConfig? = try { validatedConfig() }
+    catch (failure: IllegalArgumentException) {
+        message = failure.message
+        messageIsError = true
+        null
     }
 
     fun clearExclusionsForSourceChange() {
@@ -205,8 +201,11 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
     }
 
     val idle = !busy && !scanning
-    val browseConfig = SourceConfig(existing?.id ?: draftId, host.trim(), port.trim().toIntOrNull(),
-        share.trim(), rootPath.trim(), username.trim(), password, ignoredFolders, ignoredFiles)
+    val browseValidation = runCatching { validatedConfig() }
+    val browsingEnabled = idle && browseValidation.isSuccess
+    // Keep the disabled picker controls visible without giving them an unvalidated connection.
+    val browseConfig = browseValidation.getOrNull() ?: SourceConfig(existing?.id ?: draftId,
+        "", null, "", rootPath.trim().replace('\\', '/').trim('/'), "", "")
     Column(
         Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
             .padding(horizontal = ScreenPadding, vertical = 32.dp),
@@ -249,7 +248,8 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Media folder", style = MaterialTheme.typography.titleMedium)
                 TvTextField(share, { if (share != it) clearExclusionsForSourceChange(); share = it }, "Share (e.g. media)", Modifier.fillMaxWidth(), enabled = !busy)
-                NasRootFolderPicker(browseConfig, idle, ::changeRoot)
+                NasRootFolderPicker(browseConfig, browsingEnabled, ::changeRoot)
+                browseValidation.exceptionOrNull()?.message?.let { Text(it, color = SecondaryText) }
                 OutlinedButton(enabled = idle, onClick = { manualRoot = !manualRoot }) { Text("Enter folder path manually") }
                 if (manualRoot) TvTextField(rootPath, ::changeRoot, "Folder inside share (empty for share root)",
                     Modifier.fillMaxWidth(), imeAction = ImeAction.Done, enabled = idle)
@@ -262,7 +262,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
         }
         exclusionsNotice?.let { Text(it, color = SecondaryText) }
         IgnoredFoldersEditor(browseConfig, ignoredFolders, ignoredFiles,
-            { ignoredFolders = it }, { ignoredFiles = it }, idle)
+            { ignoredFolders = it }, { ignoredFiles = it }, browsingEnabled)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             OutlinedButton(
                 enabled = idle,
