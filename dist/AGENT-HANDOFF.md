@@ -451,3 +451,12 @@ documentation; its application source is identical to the validated revision.
 - `SourceEditorPickerTest` exercises Edit NAS against the disposable Android CI
   share. It selects `MediaChecks`, excludes one folder and one individual file,
   and checks the scan results and the saved settings after reopening the editor.
+- On development revision `e4559ee`, the [Android TV run](https://github.com/dinesh-devkota/CineVault/actions/runs/42894313012)
+  passed the build, unit tests, lint and packaging. All 41 device tests passed
+  with zero skips. The [runtime report](https://github.com/dinesh-devkota/CineVault/actions/runs/42894313012/artifacts/13799713150)
+  confirms the editor test completed the scan and indexed only `MediaChecks/clip.ts`.
+- All five [development checks](https://github.com/dinesh-devkota/CineVault/actions/runs/42894312382)
+  passed on the same revision, including 70 Apple TV simulator tests with zero
+  failures and the [Home, detail and NAS previews](https://github.com/dinesh-devkota/CineVault/actions/runs/42894312382/artifacts/13800816235).
+  The public app is ready to fast-forward to `main`. Physical Apple TV playback
+  remains pending the owner's TestFlight setup.
