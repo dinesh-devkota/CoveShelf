@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -115,12 +116,16 @@ private fun IgnoredFoldersPanel(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (entry.isDirectory) OutlinedButton(enabled = enabled && !busy, modifier = Modifier.weight(1f), onClick = { path = relative }) { Text("Folder: ${entry.name} ▸") }
                     else Text("File: ${entry.name}", modifier = Modifier.weight(1f))
-                    OutlinedButton(enabled = enabled && !busy && !inherited, onClick = {
-                        if (direct) {
-                            val remaining = rules.filterNot { it.equals(relative, ignoreCase = true) }
-                            if (entry.isDirectory) onFoldersChange(remaining) else onFilesChange(remaining)
-                        } else add(relative, entry.isDirectory)
-                    }) { Text(if (inherited) "Ignored by parent" else if (direct) "Include" else if (entry.isDirectory) "Ignore folder" else "Ignore file") }
+                    OutlinedButton(
+                        modifier = Modifier.testTag("ignore-toggle:$relative"),
+                        enabled = enabled && !busy && !inherited,
+                        onClick = {
+                            if (direct) {
+                                val remaining = rules.filterNot { it.equals(relative, ignoreCase = true) }
+                                if (entry.isDirectory) onFoldersChange(remaining) else onFilesChange(remaining)
+                            } else add(relative, entry.isDirectory)
+                        },
+                    ) { Text(if (inherited) "Ignored by parent" else if (direct) "Include" else if (entry.isDirectory) "Ignore folder" else "Ignore file") }
                 }
             }
             if (!busy && error == null && entries.isEmpty()) Text("This folder is empty.", color = SecondaryText)

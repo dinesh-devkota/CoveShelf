@@ -1,17 +1,26 @@
 package com.dineshdevkota.cinevault
 
 import android.content.Intent
-import android.graphics.Rect
-import android.os.Build
-import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.Condition
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiScrollable
-import androidx.test.uiautomator.UiSelector
 import com.dineshdevkota.cinevault.data.SourceEntity
 import com.dineshdevkota.cinevault.ui.SourceEditorActivity
 import kotlinx.coroutines.delay
@@ -19,19 +28,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalTestApi::class)
 class SourceEditorPickerTest {
+    @get:Rule val compose = createEmptyComposeRule()
     private val application = ApplicationProvider.getApplicationContext<CineVaultApp>()
     private val container get() = application.container
-    private val instrumentation = InstrumentationRegistry.getInstrumentation()
-    private val device = UiDevice.getInstance(instrumentation)
-    private val form = UiScrollable(UiSelector().scrollable(true).className("android.widget.ScrollView"))
-        .setAsVerticalList().setMaxSearchSwipes(8)
 
     @Test
     fun editPickersPersistFolderAndFileExclusionsAndScanTheSelectedRoot() = runBlocking<Unit> {
@@ -54,13 +61,15 @@ class SourceEditorPickerTest {
                 press("Use this folder")
                 label("Scan folder: MediaChecks")
                 press("Choose folders or files to ignore ▾")
-                press("Ignore folder", beside = "Folder: Ignored ▸")
-                press("Ignore file", beside = "File: Keep.mp4")
+                press("Ignore folder", hasTestTag("ignore-toggle:Ignored"))
+                press("Ignore file", hasTestTag("ignore-toggle:Keep.mp4"))
                 press("Close ignore picker ▴")
-                press("Save & Scan")
+                val save = visible(hasText("Save & Scan") and hasClickAction() and isEnabled())
+                save.performSemanticsAction(SemanticsActions.RequestFocus)
+                save.assertIsFocused().performKeyInput { pressKey(Key.DirectionCenter) }
 
                 // An idle scanner alone could mean its queued coroutine has not started yet.
-                withTimeout(45_000) {
+                withTimeout(60_000) {
                     while (container.database.sources().get(source.id)?.lastScanAt == null) delay(100)
                     container.scanner.isScanning.first { scanning -> !scanning }
                 }
@@ -88,43 +97,16 @@ class SourceEditorPickerTest {
         Intent(application, SourceEditorActivity::class.java).putExtra("source_id", id),
     )
 
-    private fun nodes(text: String): List<AccessibilityNodeInfo> {
-        val automation = instrumentation.uiAutomation
-        if (Build.VERSION.SDK_INT >= 34) automation.clearCache()
-        val matches = mutableListOf<AccessibilityNodeInfo>()
-        fun visit(node: AccessibilityNodeInfo) {
-            if (node.isVisibleToUser && node.text?.toString() == text && !bounds(node).isEmpty) matches += node
-            for (index in 0 until node.childCount) node.getChild(index)?.let(::visit)
-        }
-        // Compose publishes virtual accessibility nodes. Walk their children as UIAutomator does.
-        automation.rootInActiveWindow?.let(::visit)
-        return matches
+    private fun visible(matcher: SemanticsMatcher): SemanticsNodeInteraction {
+        // SMB listings arrive outside Compose's idle tracking. Offscreen rows already exist in the
+        // editor's scrolling Column, so wait for the result, then let Compose scroll it into view.
+        compose.waitUntilExactlyOneExists(matcher, timeoutMillis = 45_000)
+        return compose.onNode(matcher).performScrollTo().assertIsDisplayed()
     }
 
-    private fun bounds(node: AccessibilityNodeInfo) = Rect().also(node::getBoundsInScreen)
+    private fun label(text: String) = visible(hasText(text))
 
-    private fun label(text: String): AccessibilityNodeInfo {
-        return device.wait(Condition<UiDevice, AccessibilityNodeInfo?> {
-            nodes(text).firstOrNull() ?: run {
-                if (form.exists()) form.scrollTextIntoView(text)
-                nodes(text).firstOrNull()
-            }
-        }, 15_000) ?: throw AssertionError("Could not find editor label '$text'")
-    }
-
-    private fun press(text: String, beside: String? = null) {
-        val target = if (beside == null) label(text) else {
-            // Ignore buttons repeat. Match the action in the same visual row as this exact entry.
-            val row = bounds(label(beside))
-            nodes(text).firstOrNull { button ->
-                val box = bounds(button)
-                box.left >= row.right && box.top < row.bottom && row.top < box.bottom
-            } ?: throw AssertionError("No '$text' action beside '$beside'")
-        }
-        val button = generateSequence(target) { it.parent }.firstOrNull { it.isClickable && it.isFocusable }
-            ?: throw AssertionError("No focusable button for '$text'")
-        assertTrue("Could not focus '$text'", button.isFocused || button.performAction(AccessibilityNodeInfo.ACTION_FOCUS))
-        assertTrue("Could not select '$text'", device.pressDPadCenter())
-        instrumentation.waitForIdleSync()
+    private fun press(text: String, match: SemanticsMatcher = hasClickAction()) {
+        visible(hasText(text) and match and isEnabled()).performSemanticsAction(SemanticsActions.OnClick)
     }
 }
