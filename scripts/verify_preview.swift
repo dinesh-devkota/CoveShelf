@@ -2,8 +2,8 @@ import Foundation
 import ImageIO
 import Vision
 
-guard CommandLine.arguments.count == 3 else {
-    fputs("Usage: verify_preview <screenshot> <expected text>\n", stderr)
+guard CommandLine.arguments.count >= 3 else {
+    fputs("Usage: verify_preview <screenshot> <expected text> [more expected text ...]\n", stderr)
     exit(2)
 }
 
@@ -23,11 +23,13 @@ do {
     let text = (request.results ?? [])
         .compactMap { $0.topCandidates(1).first?.string }
         .joined(separator: " ")
-    guard text.localizedCaseInsensitiveContains(CommandLine.arguments[2]) else {
-        fputs("Expected preview text not visible: \(CommandLine.arguments[2])\n", stderr)
-        exit(1)
+    for expected in CommandLine.arguments.dropFirst(2) {
+        guard text.localizedCaseInsensitiveContains(expected) else {
+            fputs("Expected preview text not visible: \(expected)\n", stderr)
+            exit(1)
+        }
+        print("Verified preview text: \(expected)")
     }
-    print("Verified preview text: \(CommandLine.arguments[2])")
 } catch {
     fputs("Could not inspect screenshot: \(error)\n", stderr)
     exit(2)

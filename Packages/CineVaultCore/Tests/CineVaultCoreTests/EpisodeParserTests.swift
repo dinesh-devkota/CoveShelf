@@ -19,6 +19,15 @@ final class EpisodeParserTests: XCTestCase {
         XCTAssertNil(EpisodeParser.parse(path: "Movies/02 - Episode title.mkv"))
         XCTAssertNil(EpisodeParser.parse(path: "TV Shows/Season02/02 - Title.mkv"))
     }
+    func testEpisodeOnlyLabelsRequireAnExplicitSeasonFolder() {
+        let expected = EpisodeInfo(seriesTitle: "Example", season: 2, episode: 3)
+        for file in ["E03.Finale.mkv", "Episode 03 - Finale.mp4", "episode_003.mp4"] {
+            XCTAssertEqual(EpisodeParser.parse(path: "TV Shows/Example/Season 02/\(file)"), expected)
+            XCTAssertNil(EpisodeParser.parse(path: "Movies/\(file)"))
+        }
+        XCTAssertNil(EpisodeParser.parse(path: "TV Shows/Example/Season 02/Episode 2024.mp4"))
+        XCTAssertNil(EpisodeParser.parse(path: "TV Shows/Example/Season 02/E03rd Eye.mp4"))
+    }
     func testMeaningfulParentFallback() {
         XCTAssertEqual(EpisodeParser.parse(path: "TV Shows/Show Name/S01E02.mkv"), EpisodeInfo(seriesTitle: "Show Name", season: 1, episode: 2))
         for path in ["TV Shows/S01E02.mkv", "Movies/S01E02.mkv", "Documentaries/S01E02.mkv", "S01E02.mkv"] {

@@ -116,25 +116,35 @@ public enum TitleMatcher {
         return 1 - Double(previous[y.count]) / Double(max(x.count, y.count))
     }
 
-    public static func score(_ candidate: TMDBMovieSummary, title: String, year: Int?) -> Double {
-        var score = max(similarity(candidate.title, title), similarity(candidate.originalTitle ?? "", title))
-        if let year, let candidateYear = candidate.year {
-            switch abs(year - candidateYear) {
-            case 0: score += 0.3
-            case 1: score += 0.15
-            default: score -= 0.3
-            }
+    private static func titleSimilarity(_ candidate: TMDBMovieSummary, title: String) -> Double {
+        max(similarity(candidate.title, title), similarity(candidate.originalTitle ?? "", title))
+    }
+
+    private static func yearAdjustment(_ year: Int?, _ candidateYear: Int?) -> Double {
+        guard let year, let candidateYear else { return 0 }
+        switch abs(year - candidateYear) {
+        case 0: return 0.3
+        case 1: return 0.15
+        default: return -0.3
         }
-        return score
+    }
+
+    public static func score(_ candidate: TMDBMovieSummary, title: String, year: Int?) -> Double {
+        titleSimilarity(candidate, title: title) + yearAdjustment(year, candidate.year)
     }
 
     public static func bestMatch(title: String, year: Int?, in candidates: [TMDBMovieSummary],
                                  threshold: Double = 0.5) -> TMDBMovieSummary? {
-        guard !normalize(title).isEmpty else { return nil }
+        let normalizedTitle = normalize(title)
+        guard !normalizedTitle.isEmpty else { return nil }
+        // For very short names a single changed letter often identifies a different film.
+        let minimumTitleScore = normalizedTitle.count <= 3 ? 1.0 : threshold
         // Earlier results win ties because TMDB orders by popularity.
         var best: (TMDBMovieSummary, Double)?
         for candidate in candidates {
-            let value = score(candidate, title: title, year: year)
+            let titleScore = titleSimilarity(candidate, title: normalizedTitle)
+            guard titleScore >= minimumTitleScore else { continue }
+            let value = titleScore + yearAdjustment(year, candidate.year)
             if value > (best?.1 ?? -1) { best = (candidate, value) }
         }
         guard let best, best.1 >= threshold else { return nil }

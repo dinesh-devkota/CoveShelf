@@ -17,7 +17,10 @@ public enum EpisodeParser {
         #"(?<![\p{L}\p{N}])(\d{1,2})\s*x\s*(\d{1,4})(?=$|[^\p{L}\p{N}])"#
     ].compactMap { try? NSRegularExpression(pattern: $0, options: .caseInsensitive) }
     private static let seasonFolder = try? NSRegularExpression(pattern: #"^(?:(.+?)[ ._-]+)?Season[ ._-]*(\d{1,4})$"#, options: .caseInsensitive)
-    private static let numberedFile = try? NSRegularExpression(pattern: #"^(\d{1,4})\s*[-–—]\s*\S"#)
+    private static let seasonEpisodeNumbers = [
+        #"^(\d{1,4})\s*[-–—]\s*\S"#,
+        #"^E(?:pisode)?[ ._-]*(\d{1,4})(?=$|[ ._–—-])"#
+    ].compactMap { try? NSRegularExpression(pattern: $0, options: .caseInsensitive) }
     private static let genericFolders: Set<String> = ["tv", "tvshows", "tvseries", "shows", "series", "television",
         "movies", "movie", "documentaries", "documentary", "videos", "video", "media", "library", "seasons"]
     private static let tvRoots: Set<String> = ["tv", "tvshows", "tvseries", "shows", "series", "television"]
@@ -58,7 +61,7 @@ public enum EpisodeParser {
             let value = String(filename[..<range.lowerBound]).trimmingCharacters(in: CharacterSet(charactersIn: " ._-[](){}"))
             prefix = value.isEmpty ? nil : value
         } else {
-            guard let folderSeason, let result = match(numberedFile, filename),
+            guard let folderSeason, let result = seasonEpisodeNumbers.lazy.compactMap({ match($0, filename) }).first,
                   let text = capture(result, 1, filename), let value = Int(text), (0...999).contains(value) else { return nil }
             season = folderSeason; episode = value
         }

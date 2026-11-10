@@ -5,6 +5,24 @@ import XCTest
 
 @MainActor
 final class LibraryProgressTests: XCTestCase {
+    func testConcertVideoKeepsItsParsedYearAndRemainsEligibleForMetadata() async throws {
+        let container = try ModelContainer(for: MediaSource.self, Movie.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = container.mainContext
+        let source = MediaSource(name: "Media", host: "localhost", share: "Media", rootPath: "", username: "")
+        context.insert(source)
+        try context.save()
+        let scanner = LibraryScanner(fetchMetadata: { _ in nil }, scanVideos: { _ in
+            [RemoteFile(path: "Concerts/Stage Show (2019).mp4", size: 100)]
+        })
+        await scanner.scan(source, context: context)
+        let movie = try XCTUnwrap(source.movies.first)
+        XCTAssertEqual(movie.mediaKind, .music)
+        XCTAssertEqual(movie.parsedTitle, "Stage Show")
+        XCTAssertEqual(movie.parsedYear, 2019)
+        XCTAssertFalse(movie.metadataFetched)
+    }
+
     func testFailedFinalSaveRestoresMissingFlagsAndScanDateButKeepsSavedBatches() async throws {
         let container = try ModelContainer(for: MediaSource.self, Movie.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true))

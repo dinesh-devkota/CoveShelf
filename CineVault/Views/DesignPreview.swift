@@ -7,7 +7,17 @@ import SwiftUI
 @MainActor
 struct DesignPreview: View {
     static let isDetail = ProcessInfo.processInfo.arguments.contains("--ui-preview-detail")
-    static let isEnabled = isDetail || ProcessInfo.processInfo.arguments.contains("--ui-preview")
+    static let isFilters = ProcessInfo.processInfo.arguments.contains("--ui-preview-filters")
+    static let isEnabled = isDetail || isFilters || ProcessInfo.processInfo.arguments.contains("--ui-preview")
+
+    private static let filterPreferences: LibraryPreferences = {
+        let suite = "com.dineshdevkota.cinevault.preview.filters"
+        guard let defaults = UserDefaults(suiteName: suite) else { fatalError("Preview defaults unavailable") }
+        defaults.removePersistentDomain(forName: suite)
+        let preferences = LibraryPreferences(defaults: defaults)
+        preferences.genres = ["Adventure", "Drama"]
+        return preferences
+    }()
 
     private let container: ModelContainer
     private let featuredMovie: Movie
@@ -64,7 +74,13 @@ struct DesignPreview: View {
 
     var body: some View {
         Group {
-            if Self.isDetail {
+            if Self.isFilters {
+                NavigationStack {
+                    LibraryView(previewingGenres: Self.filterPreferences)
+                }
+                .tint(CinemaTheme.accent)
+                .preferredColorScheme(.dark)
+            } else if Self.isDetail {
                 NavigationStack {
                     MovieDetailView(movie: featuredMovie)
                 }

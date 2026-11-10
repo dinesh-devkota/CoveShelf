@@ -35,12 +35,12 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
 
 enum LibraryQuery {
     static func visible(_ movies: [Movie], sort: LibrarySort, filter: LibraryFilter,
-                        genre: String? = nil, sourceID: UUID? = nil, decade: Int? = nil) -> [Movie] {
+                        genres: Set<String> = [], sourceIDs: Set<UUID> = [], decades: Set<Int> = []) -> [Movie] {
         sort.sorted(movies.filter { movie in
             !movie.isMissing && filter.matches(movie)
-                && (genre.map { movie.genres.contains($0) } ?? true)
-                && (sourceID.map { movie.source?.id == $0 } ?? true)
-                && (decade.map { selected in movie.year.map { $0 / 10 * 10 == selected } ?? false } ?? true)
+                && (genres.isEmpty || !genres.isDisjoint(with: movie.genres))
+                && (sourceIDs.isEmpty || movie.source.map { sourceIDs.contains($0.id) } == true)
+                && (decades.isEmpty || movie.year.map { decades.contains($0 / 10 * 10) } == true)
         })
     }
 
@@ -48,10 +48,6 @@ enum LibraryQuery {
         visible(movies, sort: .title, filter: .watchlist)
     }
 
-    static func selectedSourceID(_ selection: String, sources: [MediaSource]) -> UUID? {
-        guard let id = UUID(uuidString: selection), sources.contains(where: { $0.id == id }) else { return nil }
-        return id
-    }
 }
 
 @MainActor
@@ -59,25 +55,35 @@ final class LibraryPreferences: ObservableObject {
     private let defaults: UserDefaults
     @Published var sort: LibrarySort { didSet { defaults.set(sort.rawValue, forKey: "librarySort") } }
     @Published var filter: LibraryFilter { didSet { defaults.set(filter.rawValue, forKey: "libraryFilter") } }
-    @Published var genre: String { didSet { defaults.set(genre, forKey: "libraryGenre") } }
-    @Published var sourceSelection: String { didSet { defaults.set(sourceSelection, forKey: "librarySourceID") } }
-    @Published var decade: Int { didSet { defaults.set(decade, forKey: "libraryDecade") } }
+    @Published var genres: Set<String> { didSet { defaults.set(genres.sorted(), forKey: "libraryGenres") } }
+    @Published var sourceIDs: Set<UUID> { didSet { defaults.set(sourceIDs.map(\.uuidString).sorted(), forKey: "librarySourceIDs") } }
+    @Published var decades: Set<Int> { didSet { defaults.set(decades.sorted(), forKey: "libraryDecades") } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         sort = defaults.string(forKey: "librarySort").flatMap(LibrarySort.init(rawValue:)) ?? .title
         filter = defaults.string(forKey: "libraryFilter").flatMap(LibraryFilter.init(rawValue:)) ?? .all
-        genre = defaults.string(forKey: "libraryGenre") ?? ""
-        sourceSelection = defaults.string(forKey: "librarySourceID") ?? ""
-        let savedDecade = defaults.integer(forKey: "libraryDecade")
-        decade = savedDecade > 0 && savedDecade % 10 == 0 ? savedDecade : 0
+        // An explicitly saved empty collection means All, even if an older single value exists.
+        let savedGenres = defaults.stringArray(forKey: "libraryGenres") ?? [defaults.string(forKey: "libraryGenre") ?? ""]
+        genres = Set(savedGenres.filter { !$0.isEmpty })
+        let savedSources = defaults.stringArray(forKey: "librarySourceIDs") ?? [defaults.string(forKey: "librarySourceID") ?? ""]
+        sourceIDs = Set(savedSources.compactMap(UUID.init(uuidString:)))
+        let savedDecades = defaults.array(forKey: "libraryDecades") as? [Int] ?? [defaults.integer(forKey: "libraryDecade")]
+        decades = Set(savedDecades.filter { $0 > 0 && $0 % 10 == 0 })
     }
 
     func sourcesChanged(from previousIDs: [UUID], to sources: [MediaSource]) {
-        if let selected = UUID(uuidString: sourceSelection), previousIDs.contains(selected),
-           LibraryQuery.selectedSourceID(sourceSelection, sources: sources) == nil {
-            sourceSelection = ""
+        let removed = Set(previousIDs).subtracting(sources.map(\.id))
+        if !sourceIDs.isDisjoint(with: removed) {
+            sourceIDs.subtract(removed)
         }
+    }
+
+    func clearFilters() {
+        filter = .all
+        genres.removeAll()
+        sourceIDs.removeAll()
+        decades.removeAll()
     }
 }
 
@@ -91,39 +97,43 @@ enum LibrarySearch {
 }
 
 struct LibraryView: View {
+    private enum Control: String, Hashable { case sort = "Sort", show = "Show", genre = "Genre", source = "Source", decade = "Decade", section = "Section" }
     @State private var kind: MediaKind = .movie
+    @State private var control = Control.sort
+    @State private var presentingChoices = false
+    @FocusState private var focusedControl: Control?
     @Query private var movies: [Movie]
     @Query(sort: \MediaSource.name) private var sources: [MediaSource]
     @StateObject private var preferences = LibraryPreferences()
 
+    private var filterCandidates: [Movie] {
+        movies.filter { !$0.isMissing && preferences.filter.matches($0) && $0.mediaKind == kind }
+    }
+
     private var genres: [String] {
-        var values = Set(movies.flatMap(\.genres).filter { !$0.isEmpty })
-        if !preferences.genre.isEmpty { values.insert(preferences.genre) }
+        var values = Set(filterCandidates.flatMap(\.genres).filter { !$0.isEmpty })
+        values.formUnion(preferences.genres)
         return values.sorted()
     }
 
     private var decades: [Int] {
-        var values = Set(movies.filter { !$0.isHidden && !$0.isMissing }.compactMap(\.year)
+        var values = Set(filterCandidates.compactMap(\.year)
             .filter { $0 > 0 }.map { $0 / 10 * 10 })
-        if preferences.decade > 0 { values.insert(preferences.decade) }
+        values.formUnion(preferences.decades)
         return values.sorted(by: >)
     }
 
-    private var selectedSourceID: UUID? {
-        LibraryQuery.selectedSourceID(preferences.sourceSelection, sources: sources)
-    }
-
-    private var sourceBinding: Binding<String> {
-        Binding(get: { selectedSourceID?.uuidString ?? "" }, set: { preferences.sourceSelection = $0 })
+    private var selectedSourceIDs: Set<UUID> {
+        preferences.sourceIDs.intersection(sources.map(\.id))
     }
 
     private var visible: [Movie] {
         LibraryQuery.visible(movies.filter { $0.mediaKind == kind }, sort: preferences.sort, filter: preferences.filter,
-                             genre: preferences.genre.isEmpty ? nil : preferences.genre, sourceID: selectedSourceID,
-                             decade: preferences.decade == 0 ? nil : preferences.decade)
+                             genres: preferences.genres, sourceIDs: selectedSourceIDs, decades: preferences.decades)
     }
 
     var body: some View {
+        let results = visible
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 HStack(alignment: .bottom) {
@@ -135,69 +145,118 @@ struct LibraryView: View {
                         Text(kind.label).font(.system(size: 62, weight: .bold))
                     }
                     Spacer()
-                    Text(kind == .tvShow ? "\(visible.count) episodes" : "\(visible.count) titles")
+                    Button("Clear filters") { preferences.clearFilters() }
+                        .disabled(preferences.filter == .all && preferences.genres.isEmpty && selectedSourceIDs.isEmpty && preferences.decades.isEmpty)
+                    Text(kind == .tvShow ? "\(results.count) episodes" : "\(results.count) titles")
                         .font(.callout)
                         .foregroundStyle(CinemaTheme.secondaryText)
                 }
 
                 HStack(spacing: 24) {
-                    Picker("Sort", selection: $preferences.sort) {
-                        ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    Picker("Show", selection: $preferences.filter) {
-                        ForEach(LibraryFilter.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    Picker("Genre", selection: $preferences.genre) {
-                        Text("All Genres").tag("")
-                        ForEach(genres, id: \.self) { Text($0).tag($0) }
-                    }
-                    Spacer()
+                    filterButton(.sort, value: preferences.sort.rawValue)
+                    filterButton(.show, value: preferences.filter.rawValue)
+                    filterButton(.genre, value: selectionLabel(preferences.genres.sorted(), all: "All Genres"))
                 }
-                .pickerStyle(.menu)
 
                 HStack(spacing: 24) {
-                    Picker("Source", selection: sourceBinding) {
-                        Text("All Sources").tag("")
-                        ForEach(sources) { Text($0.name).tag($0.id.uuidString) }
-                    }
-                    .frame(maxWidth: 560, alignment: .leading)
-                    Picker("Decade", selection: $preferences.decade) {
-                        Text("All Decades").tag(0)
-                        ForEach(decades, id: \.self) { Text("\($0)s").tag($0) }
-                    }
-                    Picker("Section", selection: $kind) {
-                        ForEach(MediaKind.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                    Spacer()
+                    filterButton(.source, value: selectionLabel(sources.filter { preferences.sourceIDs.contains($0.id) }.map(\.name), all: "All Sources"))
+                    filterButton(.decade, value: selectionLabel(preferences.decades.sorted().map { "\($0)s" }, all: "All Decades"))
+                    filterButton(.section, value: kind.label)
                 }
-                .pickerStyle(.menu)
 
                 if !movies.contains(where: { $0.mediaKind == kind }) {
                     ContentUnavailableView("No \(kind.label.lowercased()) yet", systemImage: kind == .music ? "music.note" : "film",
                                            description: Text("Add the parent media folder in Sources. Its subfolders are scanned automatically."))
                         .padding(.top, 100)
-                } else if visible.isEmpty {
-                    ContentUnavailableView("No matching movies", systemImage: "line.3.horizontal.decrease.circle",
+                } else if results.isEmpty {
+                    ContentUnavailableView("No matching titles", systemImage: "line.3.horizontal.decrease.circle",
                                            description: Text("Try another filter, source, decade or genre."))
                         .padding(.top, 100)
                 } else if kind == .tvShow {
-                    TVShowBrowserView(episodes: visible)
+                    TVShowBrowserView(episodes: results)
                 } else {
-                    PosterGrid(movies: visible)
+                    PosterGrid(movies: results)
                 }
             }
             .padding(.horizontal, 70)
             .padding(.bottom, 100)
         }
         .background(CinemaBackground())
+        .sheet(isPresented: $presentingChoices, onDismiss: { focusedControl = control }) { choiceSheet }
         .onChange(of: kind) { _, _ in
-            preferences.genre = ""; preferences.decade = 0; preferences.filter = .all
+            preferences.genres.removeAll(); preferences.decades.removeAll(); preferences.filter = .all
         }
         .onChange(of: sources.map(\.id)) { previousIDs, _ in
             preferences.sourcesChanged(from: previousIDs, to: sources)
         }
     }
+
+    private func selectionLabel(_ values: [String], all: String) -> String {
+        if values.count > 1 { return "\(values.count) selected" }
+        return values.first ?? all
+    }
+
+    private func filterButton(_ item: Control, value: String) -> some View {
+        Button {
+            control = item
+            presentingChoices = true
+        } label: {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(item.rawValue).font(.caption)
+                    Text(value).font(.headline).lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.down").accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .focused($focusedControl, equals: item)
+        .accessibilityLabel(item.rawValue)
+        .accessibilityValue(value)
+    }
+
+    @ViewBuilder private var choiceSheet: some View {
+        switch control {
+        case .sort:
+            LibraryChoiceSheet(title: "Sort", options: LibrarySort.allCases, selection: [preferences.sort], label: { $0.rawValue }) {
+                if let value = $0.first { preferences.sort = value }
+            }
+        case .show:
+            LibraryChoiceSheet(title: "Show", options: LibraryFilter.allCases, selection: [preferences.filter], label: { $0.rawValue }) {
+                if let value = $0.first { preferences.filter = value }
+            }
+        case .section:
+            LibraryChoiceSheet(title: "Section", options: MediaKind.allCases, selection: [kind], label: { $0.label }) {
+                if let value = $0.first { kind = value }
+            }
+        case .genre:
+            LibraryChoiceSheet(title: "Genre", options: genres, selection: preferences.genres, all: "All Genres", label: { $0 }) {
+                preferences.genres = $0
+            }
+        case .source:
+            let names = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0.name) })
+            LibraryChoiceSheet(title: "Source", options: sources.map(\.id), selection: selectedSourceIDs, all: "All Sources", label: { names[$0] ?? "" }) {
+                preferences.sourceIDs = $0.intersection(sources.map(\.id))
+            }
+        case .decade:
+            LibraryChoiceSheet(title: "Decade", options: decades, selection: preferences.decades, all: "All Decades", label: { "\($0)s" }) {
+                preferences.decades = $0
+            }
+        }
+    }
 }
+
+#if DEBUG
+extension LibraryView {
+    init(previewingGenres preferences: LibraryPreferences) {
+        self.init()
+        _preferences = StateObject(wrappedValue: preferences)
+        _control = State(initialValue: .genre)
+        _presentingChoices = State(initialValue: true)
+    }
+}
+#endif
 
 struct HomeView: View {
     @Query(sort: \Movie.dateAdded, order: .reverse) private var movies: [Movie]

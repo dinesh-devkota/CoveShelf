@@ -281,17 +281,27 @@ final class LibraryUpgradeTests: XCTestCase {
         let movies = [missing, otherSource, beta, hidden, nextDecade, unlisted, unknownYear, watched, drama, alpha]
 
         XCTAssertEqual(LibraryQuery.visible(movies, sort: .title, filter: .watchlist,
-                                             genre: "Action", sourceID: first.id, decade: 1990).map(\.title),
+                                             genres: ["Action"], sourceIDs: [first.id], decades: [1990]).map(\.title),
                        ["Alpha", "Beta", "Watched"])
         XCTAssertEqual(LibraryQuery.visible(movies, sort: .title, filter: .unwatched,
-                                             genre: "Action", sourceID: first.id, decade: 1990).map(\.title),
+                                             genres: ["Action"], sourceIDs: [first.id], decades: [1990]).map(\.title),
                        ["Alpha", "Beta", "Not listed"])
         XCTAssertEqual(LibraryQuery.visible(movies, sort: .title, filter: .hidden,
-                                             genre: "Action", sourceID: first.id, decade: 1990).map(\.title), ["Hidden"])
+                                             genres: ["Action"], sourceIDs: [first.id], decades: [1990]).map(\.title), ["Hidden"])
         XCTAssertEqual(LibraryQuery.watchlist(movies).map(\.title),
                        ["Alpha", "Beta", "Drama", "Next decade", "No year", "Watched", "Zeta"])
         XCTAssertTrue(LibraryQuery.visible(movies, sort: .title, filter: .watchlist,
-                                           genre: "Action", sourceID: first.id, decade: 1980).isEmpty)
+                                           genres: ["Action"], sourceIDs: [first.id], decades: [1980]).isEmpty)
+
+        let third = MediaSource(name: "Third", host: "third.invalid", share: "Films", rootPath: "", username: "")
+        let wrongSource = movie("Wrong source", source: third)
+        let wrongGenre = movie("Wrong genre", source: first, genre: "Comedy")
+        let wrongDecade = movie("Wrong decade", source: second, year: 1989)
+        alpha.genres = ["Thriller", "Action"]
+        let combined = LibraryQuery.visible(movies + [wrongSource, wrongGenre, wrongDecade], sort: .title,
+                                            filter: .watchlist, genres: ["Action", "Drama"],
+                                            sourceIDs: [first.id, second.id], decades: [1990, 2000])
+        XCTAssertEqual(combined.map(\.title), ["Alpha", "Beta", "Drama", "Next decade", "Watched", "Zeta"])
     }
 
     func testBrowsePreferencesPersistAndSourceDeletionClearsOnlyTheRemovedSelection() throws {
@@ -304,40 +314,61 @@ final class LibraryUpgradeTests: XCTestCase {
         let initial = LibraryPreferences(defaults: defaults)
         XCTAssertEqual(initial.sort, .rating)
         XCTAssertEqual(initial.filter, .unwatched)
-        XCTAssertEqual(initial.genre, "")
-        XCTAssertEqual(initial.sourceSelection, "")
-        XCTAssertEqual(initial.decade, 0)
+        XCTAssertTrue(initial.genres.isEmpty)
+        XCTAssertTrue(initial.sourceIDs.isEmpty)
+        XCTAssertTrue(initial.decades.isEmpty)
         let source = MediaSource(name: "Saved NAS", host: "test.invalid", share: "Movies", rootPath: "", username: "")
+        let second = MediaSource(name: "Second NAS", host: "second.invalid", share: "Films", rootPath: "", username: "")
         initial.sort = .year
         initial.filter = .watchlist
-        initial.genre = "Science Fiction"
-        initial.sourceSelection = source.id.uuidString
-        initial.decade = 1990
+        initial.genres = ["Science Fiction", "Drama"]
+        initial.sourceIDs = [source.id, second.id]
+        initial.decades = [1980, 1990]
 
         let restored = LibraryPreferences(defaults: defaults)
         XCTAssertEqual(restored.sort, .year)
         XCTAssertEqual(restored.filter, .watchlist)
-        XCTAssertEqual(restored.genre, "Science Fiction")
-        XCTAssertEqual(restored.sourceSelection, source.id.uuidString)
-        XCTAssertEqual(restored.decade, 1990)
+        XCTAssertEqual(restored.genres, ["Science Fiction", "Drama"])
+        XCTAssertEqual(restored.sourceIDs, [source.id, second.id])
+        XCTAssertEqual(restored.decades, [1980, 1990])
         restored.sourcesChanged(from: [], to: [])
-        XCTAssertEqual(restored.sourceSelection, source.id.uuidString, "An initial empty query must not erase the saved source.")
-        XCTAssertNil(LibraryQuery.selectedSourceID(restored.sourceSelection, sources: []))
-        restored.sourcesChanged(from: [], to: [source])
-        XCTAssertEqual(LibraryQuery.selectedSourceID(restored.sourceSelection, sources: [source]), source.id)
-        restored.sourcesChanged(from: [source.id], to: [])
-        XCTAssertEqual(restored.sourceSelection, "")
+        XCTAssertEqual(restored.sourceIDs, [source.id, second.id], "An initial empty query must not erase the saved sources.")
+        restored.sourcesChanged(from: [source.id, second.id], to: [second])
+        XCTAssertEqual(restored.sourceIDs, [second.id])
         let afterDeletion = LibraryPreferences(defaults: defaults)
-        XCTAssertEqual(afterDeletion.sourceSelection, "")
-        XCTAssertEqual(afterDeletion.genre, "Science Fiction", "Removing a source must preserve the other browse preferences.")
-        XCTAssertEqual(afterDeletion.decade, 1990)
+        XCTAssertEqual(afterDeletion.sourceIDs, [second.id])
+        XCTAssertEqual(afterDeletion.genres, ["Science Fiction", "Drama"])
+        XCTAssertEqual(afterDeletion.decades, [1980, 1990])
 
         defaults.set("Unsupported sort", forKey: "librarySort")
         defaults.set("Unsupported filter", forKey: "libraryFilter")
-        defaults.set(1995, forKey: "libraryDecade")
+        defaults.set([1995], forKey: "libraryDecades")
         let invalid = LibraryPreferences(defaults: defaults)
         XCTAssertEqual(invalid.sort, .title)
         XCTAssertEqual(invalid.filter, .all)
-        XCTAssertEqual(invalid.decade, 0)
+        XCTAssertTrue(invalid.decades.isEmpty)
+    }
+
+    func testLegacySingleSelectionsLoadAndStayClearedAfterRelaunch() throws {
+        let suite = "cinevault-legacy-filters-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let sourceID = UUID()
+        defaults.set("Drama", forKey: "libraryGenre")
+        defaults.set(sourceID.uuidString, forKey: "librarySourceID")
+        defaults.set(1990, forKey: "libraryDecade")
+        defaults.set(LibraryFilter.watchlist.rawValue, forKey: "libraryFilter")
+        defaults.set(LibrarySort.rating.rawValue, forKey: "librarySort")
+        let preferences = LibraryPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.genres, ["Drama"])
+        XCTAssertEqual(preferences.sourceIDs, [sourceID])
+        XCTAssertEqual(preferences.decades, [1990])
+        preferences.clearFilters()
+        let restored = LibraryPreferences(defaults: defaults)
+        XCTAssertTrue(restored.genres.isEmpty)
+        XCTAssertTrue(restored.sourceIDs.isEmpty)
+        XCTAssertTrue(restored.decades.isEmpty)
+        XCTAssertEqual(restored.filter, .all)
+        XCTAssertEqual(restored.sort, .rating)
     }
 }

@@ -196,18 +196,19 @@ jobs:
           swiftc scripts/verify_preview.swift -o "$RUNNER_TEMP/verify-preview"
           capture_when_ready() {
             local path="$1"
-            local expected="$2"
+            shift
+            local expected="$*"
             for attempt in {1..24}; do
               if ! kill -0 "$PID" 2>/dev/null; then
                 echo "CineVault exited before $expected became visible." >&2
                 return 1
               fi
               if xcrun simctl io "$DEVICE" screenshot "$path" >/dev/null 2>&1 &&
-                 "$RUNNER_TEMP/verify-preview" "$path" "$expected"; then
+                 "$RUNNER_TEMP/verify-preview" "$path" "$@"; then
                 sleep 15
                 if kill -0 "$PID" 2>/dev/null &&
                    xcrun simctl io "$DEVICE" screenshot "$path" >/dev/null 2>&1 &&
-                   "$RUNNER_TEMP/verify-preview" "$path" "$expected"; then
+                   "$RUNNER_TEMP/verify-preview" "$path" "$@"; then
                   return 0
                 fi
               fi
@@ -231,6 +232,10 @@ jobs:
           PID="${LAUNCH##*: }"
           capture_when_ready "$RUNNER_TEMP/cinevault-detail.png" "Start Over"
           xcrun simctl terminate "$DEVICE" com.dineshdevkota.cinevault
+          LAUNCH=$(xcrun simctl launch "$DEVICE" com.dineshdevkota.cinevault --ui-preview-filters)
+          PID="${LAUNCH##*: }"
+          capture_when_ready "$RUNNER_TEMP/cinevault-filters.png" "All Genres" "Adventure" "Drama" "Apply"
+          xcrun simctl terminate "$DEVICE" com.dineshdevkota.cinevault
           LAUNCH=$(xcrun simctl launch "$DEVICE" com.dineshdevkota.cinevault --ui-preview-nas)
           PID="${LAUNCH##*: }"
           capture_when_ready "$RUNNER_TEMP/cinevault-nas.png" "Devices on your network"
@@ -240,6 +245,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cinevault-home.png
             ${{ runner.temp }}/cinevault-detail.png
+            ${{ runner.temp }}/cinevault-filters.png
             ${{ runner.temp }}/cinevault-nas.png
           if-no-files-found: error
           retention-days: 7

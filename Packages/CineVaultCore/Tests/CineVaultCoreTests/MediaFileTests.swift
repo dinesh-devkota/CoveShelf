@@ -7,7 +7,24 @@ final class MediaFileTests: XCTestCase {
         XCTAssertEqual(MediaFile.kind(path: "Media/DoCuMeNtArIeS/Nature/Film.MP4"), .documentary)
         XCTAssertEqual(MediaFile.kind(path: "Media\\DOCUMENTARY\\Film.mp4"), .documentary)
         XCTAssertEqual(MediaFile.kind(path: "Documentaries/Soundtracks/Track.FLAC"), .music)
-        XCTAssertEqual(MediaFile.kind(path: "Documentary Films/Film.mp4"), .movie)
+        XCTAssertEqual(MediaFile.kind(path: "Documentary Films/Film.mp4"), .documentary)
+    }
+
+    func testClosestCollectionLabelsClassifyVideosWithoutGuessingFromTitles() {
+        XCTAssertEqual(MediaFile.kind(path: #"Media\Movies\MUSIC_VIDEOS\Band\Performance.mkv"#), .music)
+        XCTAssertEqual(MediaFile.kind(path: "Music/Concerts/Performance.mp4"), .music)
+        XCTAssertEqual(MediaFile.kind(path: "Music/Movies/Drama.mp4"), .movie)
+        XCTAssertEqual(MediaFile.kind(path: "Concerts/Documentary-Movies/Band.mp4"), .documentary)
+        XCTAssertEqual(MediaFile.kind(path: "Music Box/The Documentary.mp4"), .movie)
+        XCTAssertEqual(MediaFile.kind(path: "The Concert (2009)/Music Videos.mp4"), .movie)
+    }
+
+    func testMissingGenreDataKeepsFolderEvidenceUntilTheMatchSuppliesAGenre() {
+        let path = "Documentary Films/Interview.mp4"
+        XCTAssertEqual(MediaFile.kind(path: path, genres: ["  "], matched: true), .documentary)
+        XCTAssertEqual(MediaFile.kind(path: path, genres: ["  mUsIc "], matched: true), .music)
+        XCTAssertEqual(MediaFile.kind(path: path, genres: ["Drama"], matched: true), .movie)
+        XCTAssertEqual(MediaFile.kind(path: "Concerts/Example.S01E03.mp4", genres: ["Music"], matched: true), .tvShow)
     }
     func testIndexesShortVideosAndAudioWithoutAdmittingEmptyOrUnsupportedFiles() {
         XCTAssertTrue(MediaFile.shouldIndex(path: "Movies/Short.mp4", size: 100))

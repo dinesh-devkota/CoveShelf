@@ -36,6 +36,19 @@ final class TMDBTests: XCTestCase {
         XCTAssertNil(TitleMatcher.bestMatch(title: "Heat", year: 1995, in: candidates))
     }
 
+    func testReleaseYearAloneCannotMakeAWeakTitleMatch() {
+        let candidate = TMDBMovieSummary(id: 1, title: "Airlift", releaseDate: "2016-01-22")
+        XCTAssertNil(TitleMatcher.bestMatch(title: "Arrival", year: 2016, in: [candidate]))
+    }
+
+    func testShortTitlesMustMatchTheDisplayOrOriginalTitle() {
+        let similar = TMDBMovieSummary(id: 1, title: "Us", releaseDate: "2009-01-01")
+        var exact = TMDBMovieSummary(id: 2, title: "Là-haut")
+        exact.originalTitle = "Up"
+        XCTAssertNil(TitleMatcher.bestMatch(title: "Up", year: 2009, in: [similar]))
+        XCTAssertEqual(TitleMatcher.bestMatch(title: "UP!", year: 2009, in: [similar, exact])?.id, 2)
+    }
+
     func testMatcherRejectsTitlesWithoutSearchableCharacters() {
         let candidates = [TMDBMovieSummary(id: 603, title: "The Matrix", releaseDate: "1999-03-30")]
         for title in ["", "   ", "!!!"] {

@@ -156,14 +156,14 @@ private final class LibraryScanState {
     func insert(_ file: RemoteFile) -> Movie {
         let movie = Movie(filePath: file.path, fileSize: file.size, source: source)
         let parsed = FilenameParser.parse(path: file.path)
-        let music = MediaFile.kind(path: file.path) == .music
-        let title = music ? (movie.fileName as NSString).deletingPathExtension : parsed.title
+        let audio = MediaFile.isAudio(path: file.path)
+        let title = audio ? (movie.fileName as NSString).deletingPathExtension : parsed.title
         movie.parsedTitle = title
-        movie.parsedYear = music ? nil : parsed.year
-        movie.tmdbID = music ? nil : parsed.tmdbID
+        movie.parsedYear = audio ? nil : parsed.year
+        movie.tmdbID = audio ? nil : parsed.tmdbID
         movie.setTitle(title.isEmpty ? movie.fileName : title)
-        movie.year = music ? nil : parsed.year
-        movie.metadataFetched = music
+        movie.year = audio ? nil : parsed.year
+        movie.metadataFetched = audio
         context.insert(movie)
         indexed[file.path] = movie
         added += 1

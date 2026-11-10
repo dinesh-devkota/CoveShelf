@@ -23,11 +23,19 @@ public enum MediaFile {
         if isAudio(path: path) { return .music }
         if isEpisode ?? (EpisodeParser.parse(path: path) != nil) { return .tvShow }
         if matched {
-            if genres.contains(where: { $0.caseInsensitiveCompare("Documentary") == .orderedSame }) { return .documentary }
-            if genres.contains(where: { $0.caseInsensitiveCompare("Music") == .orderedSame }) { return .music }
-            return .movie
+            let names = genres.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            if names.contains("documentary") { return .documentary }
+            if names.contains("music") { return .music }
+            if names.contains(where: { !$0.isEmpty }) { return .movie }
         }
-        if parts(path).dropLast().contains(where: { ["documentary", "documentaries"].contains($0.lowercased()) }) { return .documentary }
+        for folder in parts(path).dropLast().reversed() {
+            switch folder.lowercased().filter({ !$0.isWhitespace && !"._-".contains($0) }) {
+            case "documentary", "documentaries", "documentaryfilms", "documentarymovies": return .documentary
+            case "music", "musicvideos", "concerts", "concertfilms", "concertvideos": return .music
+            case "movies", "films": return .movie
+            default: continue
+            }
+        }
         return .movie
     }
     public static func shouldSkipDirectory(name: String) -> Bool {
