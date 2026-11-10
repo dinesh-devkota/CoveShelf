@@ -438,3 +438,16 @@ documentation; its application source is identical to the validated revision.
   printed during the count check.
 - The default branch remains at the prior TV-grouping baseline. No signing,
   TestFlight, store upload, or new physical Apple TV test occurred.
+
+### November 10, 2026 — NAS picker and device testing
+
+- The failed preview upload recovered on the second attempt. All five jobs in
+  [development validation](https://github.com/dinesh-devkota/CineVault/actions/runs/41952554325)
+  passed. The [downloadable screenshots](https://github.com/dinesh-devkota/CineVault/actions/runs/41952554325/artifacts/13797961908)
+  contain the Home, detail and NAS screens at 1920 × 1080.
+- The owner has Windows and a physical Apple TV. The README now covers the
+  Windows-to-TestFlight installation and NAS playback check. Apple Developer
+  Program enrollment and signing setup are still needed for this route.
+- `SourceEditorPickerTest` exercises Edit NAS against the disposable Android CI
+  share. It selects `MediaChecks`, excludes one folder and one individual file,
+  and checks the scan results and the saved settings after reopening the editor.

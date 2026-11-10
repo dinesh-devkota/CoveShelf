@@ -30,7 +30,7 @@ device and NAS validation has not yet been completed.
 
 ### Format support
 
-tvOS' built-in player plays **MP4 / M4V / MOV** (H.264, HEVC, AAC, AC3/E-AC3). MKV/AVI etc. are listed but show a "format not supported" message. Remux them losslessly on the NAS, e.g. `ffmpeg -i in.mkv -c copy -map 0 out.mp4`. (VLCKit could be added later as a fallback player.)
+For video on Apple TV, Cine-Media checks MP4, M4V, and MOV files with the native player before playback. The codecs inside the file must also work on the device. The [Media Guide](docs/MEDIA-GUIDE.md#check-the-scan-and-playback) lists the supported video and audio formats on each platform and explains how the scanner distinguishes MPEG-TS recordings from TypeScript files.
 
 ## Screenshots
 
@@ -102,7 +102,25 @@ in-memory sample library with placeholder artwork; it never connects to a NAS or
 your real collection. The workflow checks for screen-specific text before accepting each
 capture, and uploads diagnostic screenshots if a preview fails.
 
-On a Mac you can also do it locally: `brew install xcodegen && python3 scripts/generate_app_icons.py && xcodegen generate && open CineVault.xcodeproj`.
+### Test on your own Apple TV
+
+**From Windows**, use the [Apple distribution setup](#one-time-apple-setup-all-doable-from-windows) and [TestFlight installation steps](#installing-on-apple-tv-testflight). GitHub's macOS runner builds and signs the app using your developer team's credentials. TestFlight requires an Apple TV running tvOS 18 or later. [TestFlight requirements](https://testflight.apple.com/)
+
+You can run the community app on your Apple TV using a Mac with Xcode and a free Apple Account. The app requires tvOS 17 or later. [Apple’s personal-device testing guide](https://developer.apple.com/help/account/basics/about-your-developer-account/)
+
+1. On the Mac, open a terminal in this repository and generate the Xcode project.
+
+   ```sh
+   brew install xcodegen
+   python3 scripts/generate_app_icons.py
+   xcodegen generate
+   open CineVault.xcodeproj
+   ```
+
+2. Sign in to your Apple Account in Xcode. In the **CineVault** app target, open **Signing & Capabilities**, enable automatic signing and choose your **Personal Team**. If Xcode asks for a unique bundle identifier, set one for your local test build.
+3. Pair the Apple TV with the Mac in Xcode, select the **CineVault** scheme and your Apple TV as the destination, then click **Run**. [Apple’s device pairing guide](https://developer.apple.com/documentation/xcode/managing-your-simulated-and-physical-devices-in-device-hub)
+
+Once Cine-Media is installed, open **Sources → Add NAS** and select a folder containing a known-good H.264/AAC MP4. After the scan, open the title, play it, seek forward, and return to its detail screen to check the saved resume point. See the [Media Guide](docs/MEDIA-GUIDE.md) for folder exclusions.
 
 ### Configure a commercial build
 
@@ -164,7 +182,7 @@ signing details. Do not publish the decrypted log.
 
 ## One-time Apple setup (all doable from Windows)
 
-You need a paid Apple Developer account.
+TestFlight and App Store distribution require Apple Developer Program membership. [Apple’s membership overview](https://developer.apple.com/help/account/membership/programs-overview/)
 
 1. **Bundle ID** — developer.apple.com → Certificates, IDs & Profiles → Identifiers → **+** → App IDs → App, bundle ID `com.dineshdevkota.cinevault` (or your own; then set the `commercial` environment variable `APP_BUNDLE_ID`).
 2. **App record** — appstoreconnect.apple.com → Apps → **+** → New App, platform **tvOS**, same bundle ID.
@@ -209,7 +227,7 @@ Fastlane builds, the same bundle and product IDs can be provided as environment 
 
 1. After **Commercial build** succeeds with TestFlight upload enabled, wait for processing in App Store Connect (≈10–30 min).
 2. App Store Connect → your app → **TestFlight** → add yourself as an internal tester.
-3. On the Apple TV install **TestFlight** from the App Store, sign in with the same Apple ID, install **CineVault**. Internal builds expire after 90 days — just re-run the workflow.
+3. Install **TestFlight** from the App Store on your Apple TV. Open your invitation email on Windows and choose **View in TestFlight**. Enter the displayed code under **Redeem** in TestFlight on the TV, then install **Cine-Media**. [Apple’s tvOS installation instructions](https://testflight.apple.com/)
 
 ## Publishing to the App Store
 
