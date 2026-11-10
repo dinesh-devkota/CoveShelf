@@ -117,7 +117,7 @@ final class Movie {
                        isEpisode: episodeInfo != nil)
     }
     var episodeInfo: EpisodeInfo? {
-        guard !MediaFile.isAudio(path: filePath) else { return nil }
+        guard !MediaFile.isAudio(path: filePath), !MediaFile.isPhoto(path: filePath) else { return nil }
         let local = EpisodeParser.parse(path: filePath)
         guard let name = seriesTitle ?? local?.seriesTitle, !name.isEmpty,
               let season = seasonNumber ?? local?.season, let episode = episodeNumber ?? local?.episode,
@@ -190,10 +190,11 @@ final class Movie {
 
     func resetToFileName() {
         let parsed = FilenameParser.parse(path: filePath)
-        parsedTitle = parsed.title
-        parsedYear = parsed.year
+        let localOnly = MediaFile.isPhoto(path: filePath) || MediaFile.isAudio(path: filePath)
+        parsedTitle = localOnly ? (fileName as NSString).deletingPathExtension : parsed.title
+        parsedYear = localOnly ? nil : parsed.year
         isLocked = false
-        tmdbID = parsed.tmdbID
+        tmdbID = localOnly ? nil : parsed.tmdbID
         seriesTitle = nil
         seriesTMDBID = nil
         seasonNumber = nil
@@ -208,7 +209,7 @@ final class Movie {
         genres = []
         runtimeMinutes = nil
         rating = nil
-        metadataFetched = false
+        metadataFetched = localOnly
     }
 
     static func makeSortTitle(_ title: String) -> String {

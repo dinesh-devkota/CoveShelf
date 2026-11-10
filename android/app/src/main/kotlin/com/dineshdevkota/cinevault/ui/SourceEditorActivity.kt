@@ -300,6 +300,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                         withContext(NonCancellable) {
                             container.database.saveSourceWithExclusions(entity)
                             container.smb.reset(entity.id)
+                            container.photos.resetSource(entity.id)
                             container.scope.launch { container.scanner.scan(entity.id) }
                         }
                         onClose()
@@ -331,6 +332,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                                 container.database.sources().delete(source.id)
                             }
                             container.smb.reset(source.id)
+                            container.photos.resetSource(source.id)
                             onClose()
                         }
                     }, enabled = idle) { Text("Remove") }

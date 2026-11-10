@@ -52,14 +52,14 @@ private fun MediaGuideScreen() {
         contentPadding = PaddingValues(horizontal = ScreenPadding, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { ScreenHeader("Media Guide", kicker = "CINE-MEDIA") }
+        item { ScreenHeader("Media Guide", kicker = "COVESHELF") }
         item {
             GuideSection(
                 "One source for your whole library",
                 "In Sources, add a NAS, choose a discovered device or enter its address, then sign in if needed. " +
                     "Select your Media share and use its top-level folder. If Media is inside another share, " +
                     "open its Media folder. Choose Use this folder & scan. Scans include every subfolder. A source ending in Media/Movies " +
-                    "cannot find sibling Music or TV Shows folders; select their common parent instead.",
+                    "cannot find sibling Music, TV Shows or Photos folders; select their common parent instead.",
             )
         }
         item {
@@ -77,7 +77,8 @@ private fun MediaGuideScreen() {
                 "Media/Movies/Arrival (2016)/Arrival (2016).mkv\n" +
                     "Media/Documentaries/Title (2020)/Title (2020).mp4\n" +
                     "Media/TV Shows/Show Name (2020)/Season 01/ShowName.S01E01.mkv\n" +
-                    "Media/Music/Artist/Album/01-Song.mp3",
+                    "Media/Music/Artist/Album/01-Song.mp3\n" +
+                    "Media/Photos/Family Trip/Beach.jpg",
                 monospaced = true,
             )
         }
@@ -96,6 +97,15 @@ private fun MediaGuideScreen() {
                 "Use S01E01-style episode names. Open a show's poster, choose a season, then an episode. " +
                     "Keep audio music in artist/album folders. TMDB's Music category is for screen content; " +
                     "it does not provide an MP3 album catalog.",
+            )
+        }
+        item {
+            GuideSection(
+                "Photo albums",
+                "Keep photos in folders such as Media/Photos/Family Trip, include their parent in your NAS source, then scan again. " +
+                    "Open Photos, choose an album, and select a thumbnail. Previous and Next move through the album; Back returns to it. " +
+                    "Albums follow the NAS source and folder. JPEG, PNG, WebP, HEIC and HEIF files use the device's image decoder; " +
+                    "damaged files or unsupported encodings may not open. Photos are read from your NAS and are not sent to TMDB.",
             )
         }
         item {
@@ -120,7 +130,7 @@ private fun MediaGuideScreen() {
                 "Scan and play",
                 "Enter NAS credentials only in the app; a read-only account is recommended. Partial results " +
                     "can appear before scanning finishes, so check the status and last successful scan time. " +
-                    "Playback depends on the device's codecs; Cine-Media does not transcode. Use the remote's " +
+                    "Playback depends on the device's codecs; CoveShelf does not transcode. Use the remote's " +
                     "Back button or the Back control above to return to Settings.",
             )
         }

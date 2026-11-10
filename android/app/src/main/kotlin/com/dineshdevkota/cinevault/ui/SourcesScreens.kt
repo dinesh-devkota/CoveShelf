@@ -210,7 +210,7 @@ fun SettingsTab() {
         item { Text("About", style = MaterialTheme.typography.titleLarge) }
         item {
             Text(
-                "Cine-Media streams MP4, MKV, WebM, AVI, TS and more directly from your NAS over SMB. " +
+                "CoveShelf streams MP4, MKV, WebM, AVI, TS and more directly from your NAS over SMB. " +
                     "Which video and audio codecs play depends on your TV device.",
                 color = SecondaryText,
             )

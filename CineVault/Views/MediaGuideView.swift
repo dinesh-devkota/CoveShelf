@@ -9,7 +9,7 @@ struct MediaGuideView: View {
                 Button("Back to Settings") { dismiss() }
             }
             Section("One source for your whole library") {
-                Text("In Sources, add a NAS, choose a discovered device or enter its address, then sign in if needed. Select your Media share and use its top-level folder. If Media is inside another share, open its Media folder. Choose Use this folder & scan. Scans include every subfolder. A source ending in Media/Movies cannot find sibling Music or TV Shows folders; select their common parent instead.")
+                Text("In Sources, add a NAS, choose a discovered device or enter its address, then sign in if needed. Select your Media share and use its top-level folder. If Media is inside another share, open its Media folder. Choose Use this folder & scan. Scans include every subfolder. A source ending in Media/Movies cannot find sibling Music, TV Shows or Photos folders; select their common parent instead.")
                     .focusable()
             }
             Section("Choose folders and files to ignore") {
@@ -22,6 +22,7 @@ struct MediaGuideView: View {
                 Media/Documentaries/Title (2020)/Title (2020).mp4
                 Media/TV Shows/Show Name (2020)/Season 01/ShowName.S01E01.mkv
                 Media/Music/Artist/Album/01-Song.mp3
+                Media/Photos/Family Trip/Beach.jpg
                 """)
                 .font(.system(.caption, design: .monospaced))
                 .focusable()
@@ -34,6 +35,10 @@ struct MediaGuideView: View {
                 Text("Use S01E01-style episode names. Open a show's poster, choose a season, then an episode. Keep audio music in artist/album folders. TMDB's Music category is for screen content; it does not provide an MP3 album catalog.")
                     .focusable()
             }
+            Section("Photo albums") {
+                Text("Keep photos in folders such as Media/Photos/Family Trip, include their parent in your NAS source, then scan again. Open Photos, choose an album, and select a thumbnail. Previous and Next move through the album; Back returns to it. Albums follow the NAS source and folder. JPEG, PNG, WebP, HEIC and HEIF files use the device's image decoder; damaged files or unsupported encodings may not open. Photos are read from your NAS and are not sent to TMDB.")
+                    .focusable()
+            }
             Section("Library filters") {
                 Text("Open Genre, Source or Decade, select several choices, then choose Apply. Comedy and Drama shows titles in either genre. Add a decade to narrow the results. Back cancels your edits. Clear filters shows the whole section again.")
             }
@@ -43,10 +48,10 @@ struct MediaGuideView: View {
                     .focusable()
             }
             Section("Scan and play") {
-                Text("Enter NAS credentials only in the app; a read-only account is recommended. Partial results can appear before scanning finishes, so check the status and last successful scan time. For video, Apple TV supports MP4, M4V, and MOV with compatible codecs; Android supports more containers. Cine-Media does not transcode.")
+                Text("Enter NAS credentials only in the app; a read-only account is recommended. Partial results can appear before scanning finishes, so check the status and last successful scan time. For video, Apple TV supports MP4, M4V, and MOV with compatible codecs; Android supports more containers. CoveShelf does not transcode.")
                     .focusable()
             }
         }
-        .navigationTitle("Cine-Media Guide")
+        .navigationTitle("CoveShelf Guide")
     }
 }

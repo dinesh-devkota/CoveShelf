@@ -1,4 +1,7 @@
-# CineVault — agent handoff (2026-11-01)
+# CoveShelf — agent handoff
+
+Current updates are appended chronologically below. The original November 1
+snapshot is retained for history and is superseded by later owner decisions.
 
 A snapshot written by the previous Copilot agent. Check the live state (`git log` and the Actions tab) before acting on it.
 
@@ -552,3 +555,31 @@ documentation; its application source is identical to the validated revision.
   Public development and main are ready to receive the validation-notes commit
   together. Physical Apple TV installation/playback remains pending signing and
   the owner's device setup; no TestFlight or store upload was performed.
+
+## CoveShelf name and NAS photos (2026-11-10, validation in progress)
+
+- Owner selected **CoveShelf** and authorized renaming the public repository.
+  The public repository is now `dinesh-devkota/CoveShelf`, and the local origin
+  points to it. The local workspace, existing development branch, private
+  package, app/bundle IDs, database and credential keys remain unchanged.
+- Both TV apps add a dedicated Photos tab, albums grouped by NAS source and
+  parent folder, native-decoded thumbnails and a full-screen viewer with
+  Previous, Next, Back and Try again. Photos never enter TMDB matching or the
+  video player. Source edits, ignored paths and rescans invalidate photo views.
+- Image loading has bounded file size, decoded size, concurrency and cache use.
+  JPEG, PNG, WebP, HEIC and HEIF are candidates; actual decoder support is
+  device-dependent. EXIF orientation is honored. The guide covers photo setup.
+- Synthetic photo fixture share `COVEPHOTOS` is separate from the existing video
+  share. It includes JPEG/PNG/WebP, an EXIF-rotated JPEG, corrupt data and a sparse
+  oversized file. Hosted tests must exercise the authenticated share; do not
+  retry the previously quarantined Windows Impacket installation.
+- Two Apple photo preview screens were added to hosted preview validation.
+  Android runtime validation requires `NasPhotoIntegrationTest` with no skips.
+- Local Android validation passed 137 JVM tests (zero failures/skips), lint and
+  debug/app-test packaging. Both `TVNavigationTest` remote-navigation and
+  activity-recreation tests passed on the isolated TV emulator.
+- Root owns Gradle and the isolated `CoveShelfPhotoTest` AVD on emulator-5584.
+  The owner's `CineVault_TV` is stopped and has not yet received this update.
+- Follow-on usability priorities from the Infuse review: one continuation card
+  per TV show, explicit next-episode actions, series-aware grouped search and
+  reliable remote focus restoration. These are not included in this batch yet.

@@ -16,6 +16,7 @@ interface LibraryEntry {
     val isMissing: Boolean
     val playbackPositionMs: Long
     val sourceId: String? get() = null
+    val isPhoto: Boolean get() = false
 }
 
 object WatchRules {
@@ -120,6 +121,6 @@ object LibraryQuery {
         visible(items, LibrarySort.TITLE, LibraryFilter.WATCHLIST, genre = null)
 
     fun <T : LibraryEntry> continueWatching(items: List<T>): List<T> = items
-        .filter { !it.isMissing && !it.isHidden && WatchRules.isInProgress(it.isWatched, it.playbackPositionMs) }
+        .filter { !it.isPhoto && !it.isMissing && !it.isHidden && WatchRules.isInProgress(it.isWatched, it.playbackPositionMs) }
         .sortedByDescending { it.lastPlayedAt ?: 0L }
 }

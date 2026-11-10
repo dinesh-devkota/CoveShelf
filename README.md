@@ -1,14 +1,15 @@
-# Cine-Media
+# CoveShelf
 
-Add one parent NAS folder to build your Movies, Documentaries, TV Shows, and Music library. See the [media setup and naming guide](docs/MEDIA-GUIDE.md) for folder examples, free personal TMDB setup, and playback help. The existing CineVault project and app identifiers are retained so updates keep your saved library.
+Add one parent NAS folder to build your Movies, Documentaries, TV Shows, Music, and Photos library. See the [media setup and naming guide](docs/MEDIA-GUIDE.md) for folder examples, photo albums, free personal TMDB setup, and playback help. CoveShelf was previously named Cine-Media; the existing CineVault project and app identifiers are retained so updates keep your saved library and credentials.
 
-A movie library for **Apple TV and Android TV** that streams movies directly from
-a NAS over SMB. Built with SwiftUI on tvOS and Compose for TV on Android.
+A personal media library for **Apple TV and Android TV** that plays movies,
+shows and music and displays photo albums directly from a NAS over SMB.
+Built with SwiftUI on tvOS and Compose for TV on Android.
 
 ## Android TV
 
 The Android TV app includes direct SMB playback, a personal Watchlist,
-library management, saved source/genre/decade filters, search, and TMDB metadata. See the [Android guide](docs/ANDROID.md)
+library management, saved source/genre/decade filters, search, photo albums, and TMDB metadata. See the [Android guide](docs/ANDROID.md)
 for build and installation instructions, release signing, and a first NAS playback
 test. Android billing and Google Play distribution remain pending. Real Android TV
 device and NAS validation has not yet been completed.
@@ -16,13 +17,14 @@ device and NAS validation has not yet been completed.
 ## Apple TV features
 
 - Add one or more NAS sources (SMB2/3: Synology, QNAP, TrueNAS, Windows shares…). Passwords live in the Keychain.
-- Recursive scan for movie files; skips samples, trailers, extras and NAS metadata folders (`@eaDir`, `#recycle`, …). Playback checks the current file size on the NAS, even if a file changed since its last scan.
+- Recursive scan for media files; skips samples, trailers, extras and NAS metadata folders (`@eaDir`, `#recycle`, …). Playback checks the current file size on the NAS, even if a file changed since its last scan.
 - NAS credential, scan, and TMDB lookup errors are shown in the app rather than silently reported as successful.
 - Smart filename parsing (`The.Matrix.1999.1080p.BluRay.x264-GRP.mkv` → *The Matrix (1999)*), folder fallback (`Heat (1995)/movie.mkv`) and `{tmdb-123}` tags.
 - Posters, backdrops, overview, genres, runtime and rating from TMDB (your own free API key).
 - Cinematic Apple TV browsing with backdrop artwork, landscape Continue Watching cards, focus-aware posters, a movie detail screen, and a dark, uncluttered interface.
 - Home (Continue Watching / Recently Added / Unwatched), full library grid with sort + filter + genre, and search.
 - Personal Watchlist with a Home shelf and library filter. Select multiple genres, sources, or decades and save the combination. [Browse with filters](docs/MEDIA-GUIDE.md#browse-with-filters)
+- Photo albums grouped by NAS source and folder, with thumbnails and a full-screen viewer. [Browse photo albums](docs/MEDIA-GUIDE.md#browse-photo-albums)
 - Streaming playback with AVPlayer via a custom resource loader that serves byte ranges straight from SMB — instant start and seeking, nothing is downloaded first.
 - Resume position, watched state (automatic after 92%), progress bars. Replaying a watched movie makes it resumable again.
 - Manage entries: rename, fix match (search TMDB and pick), hide, reset progress, reset to file name.
@@ -30,7 +32,7 @@ device and NAS validation has not yet been completed.
 
 ### Format support
 
-For video on Apple TV, Cine-Media checks MP4, M4V, and MOV files with the native player before playback. The codecs inside the file must also work on the device. The [Media Guide](docs/MEDIA-GUIDE.md#check-the-scan-and-playback) lists the supported video and audio formats on each platform and explains how the scanner distinguishes MPEG-TS recordings from TypeScript files.
+For video on Apple TV, CoveShelf checks MP4, M4V, and MOV files with the native player before playback. The codecs inside the file must also work on the device. The [Media Guide](docs/MEDIA-GUIDE.md#check-the-scan-and-playback) lists the supported video and audio formats on each platform and explains how the scanner distinguishes MPEG-TS recordings from TypeScript files. Photos are grouped into albums by NAS source and folder; JPEG, PNG, WebP, HEIC, and HEIF viewing depends on the device's image decoder.
 
 ## Screenshots
 
@@ -38,11 +40,11 @@ Apple TV simulator previews with a sample library and placeholder artwork:
 
 **Home**
 
-![CineVault home screen](docs/screenshots/home.png)
+![CoveShelf home screen](docs/screenshots/home.png)
 
 **Movie details**
 
-![CineVault movie detail screen](docs/screenshots/movie-detail.png)
+![CoveShelf movie detail screen](docs/screenshots/movie-detail.png)
 
 ## Project layout
 
@@ -120,7 +122,7 @@ You can run the community app on your Apple TV using a Mac with Xcode and a free
 2. Sign in to your Apple Account in Xcode. In the **CineVault** app target, open **Signing & Capabilities**, enable automatic signing and choose your **Personal Team**. If Xcode asks for a unique bundle identifier, set one for your local test build.
 3. Pair the Apple TV with the Mac in Xcode, select the **CineVault** scheme and your Apple TV as the destination, then click **Run**. [Apple’s device pairing guide](https://developer.apple.com/documentation/xcode/managing-your-simulated-and-physical-devices-in-device-hub)
 
-Once Cine-Media is installed, open **Sources → Add NAS** and select a folder containing a known-good H.264/AAC MP4. After the scan, open the title, play it, seek forward, and return to its detail screen to check the saved resume point. See the [Media Guide](docs/MEDIA-GUIDE.md) for folder exclusions.
+Once CoveShelf is installed, open **Sources → Add NAS** and select a folder containing a known-good H.264/AAC MP4. After the scan, open the title, play it, seek forward, and return to its detail screen to check the saved resume point. See the [Media Guide](docs/MEDIA-GUIDE.md) for folder exclusions and photo albums.
 
 ### Configure a commercial build
 
@@ -163,7 +165,7 @@ and private key **outside the repository**, and keep the key private:
 ```bash
 openssl req -x509 -newkey rsa:3072 -sha256 -nodes -days 3650 \
   -keyout commercial-diagnostics.key -out commercial-diagnostics.crt \
-  -subj "/CN=CineVault build diagnostics"
+  -subj "/CN=CoveShelf build diagnostics"
 ```
 
 Set the `commercial` environment variable `COMMERCIAL_DIAGNOSTICS_CERT_BASE64` to the base64
@@ -198,7 +200,7 @@ TestFlight and App Store distribution require Apple Developer Program membership
 5. **Distribution certificate** — run these OpenSSL commands (e.g. in Git Bash) from a private folder **outside the repository**. Keep the `.key`, `.p12`, `.p8`, and password private:
    ```bash
    openssl genrsa -out dist.key 2048
-   openssl req -new -key dist.key -out dist.csr -subj "/emailAddress=you@example.com/CN=CineVault/C=US"
+   openssl req -new -key dist.key -out dist.csr -subj "/emailAddress=you@example.com/CN=CoveShelf/C=US"
    ```
    developer.apple.com → Certificates → **+** → *Apple Distribution* → upload `dist.csr`, download `distribution.cer`, then:
    ```bash
@@ -227,7 +229,7 @@ Fastlane builds, the same bundle and product IDs can be provided as environment 
 
 1. After **Commercial build** succeeds with TestFlight upload enabled, wait for processing in App Store Connect (≈10–30 min).
 2. App Store Connect → your app → **TestFlight** → add yourself as an internal tester.
-3. Install **TestFlight** from the App Store on your Apple TV. Open your invitation email on Windows and choose **View in TestFlight**. Enter the displayed code under **Redeem** in TestFlight on the TV, then install **Cine-Media**. [Apple’s tvOS installation instructions](https://testflight.apple.com/)
+3. Install **TestFlight** from the App Store on your Apple TV. Open your invitation email on Windows and choose **View in TestFlight**. Enter the displayed code under **Redeem** in TestFlight on the TV, then install **CoveShelf**. [Apple’s tvOS installation instructions](https://testflight.apple.com/)
 
 ## Publishing to the App Store
 

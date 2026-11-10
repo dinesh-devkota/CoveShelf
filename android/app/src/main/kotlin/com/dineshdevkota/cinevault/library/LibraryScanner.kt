@@ -115,7 +115,7 @@ class LibraryScanner(
             try {
                 val metadataFailure = afterScan?.invoke()
                 val currentCounts = movies.forSource(source.id).filter { !it.isMissing }.groupingBy { it.mediaKind }.eachCount()
-                val complete = "${source.name}: ${currentCounts[MediaKind.MOVIE] ?: 0} movies, ${currentCounts[MediaKind.DOCUMENTARY] ?: 0} documentaries, ${currentCounts[MediaKind.TV_SHOW] ?: 0} TV episodes, ${currentCounts[MediaKind.MUSIC] ?: 0} music items ($added new)"
+                val complete = "${source.name}: ${currentCounts[MediaKind.MOVIE] ?: 0} movies, ${currentCounts[MediaKind.DOCUMENTARY] ?: 0} documentaries, ${currentCounts[MediaKind.TV_SHOW] ?: 0} TV episodes, ${currentCounts[MediaKind.MUSIC] ?: 0} music items, ${currentCounts[MediaKind.PHOTO] ?: 0} photos ($added new)"
                 statusFlow.value = if (metadataFailure == null) complete else "$complete. $metadataFailure"
             } catch (e: CancellationException) {
                 throw e
@@ -132,11 +132,11 @@ class LibraryScanner(
 
     private fun newEntry(sourceId: String, file: RemoteFile): MovieEntity {
         val parsed = FilenameParser.parse(file.path)
-        val audio = MediaFile.isAudio(file.path)
-        val title = if (audio) file.fileName.substringBeforeLast('.') else parsed.title
+        val localTitle = MediaFile.isAudio(file.path) || MediaFile.isPhoto(file.path)
+        val title = if (localTitle) file.fileName.substringBeforeLast('.') else parsed.title
         return MovieEntity(sourceId = sourceId, filePath = file.path, fileName = file.fileName, fileSize = file.size,
-            parsedTitle = title, parsedYear = if (audio) null else parsed.year, tmdbId = if (audio) null else parsed.tmdbId,
-            year = if (audio) null else parsed.year, title = if (audio) title else LibrarySync.initialTitle(file, parsed),
-            metadataFetched = audio)
+            parsedTitle = title, parsedYear = if (localTitle) null else parsed.year, tmdbId = if (localTitle) null else parsed.tmdbId,
+            year = if (localTitle) null else parsed.year, title = if (localTitle) title else LibrarySync.initialTitle(file, parsed),
+            metadataFetched = localTitle)
     }
 }

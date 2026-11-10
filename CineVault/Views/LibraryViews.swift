@@ -45,7 +45,7 @@ enum LibraryQuery {
     }
 
     static func watchlist(_ movies: [Movie]) -> [Movie] {
-        visible(movies, sort: .title, filter: .watchlist)
+        visible(movies.filter { $0.mediaKind != .photo }, sort: .title, filter: .watchlist)
     }
 
 }
@@ -227,7 +227,7 @@ struct LibraryView: View {
                 if let value = $0.first { preferences.filter = value }
             }
         case .section:
-            LibraryChoiceSheet(title: "Section", options: MediaKind.allCases, selection: [kind], label: { $0.label }) {
+            LibraryChoiceSheet(title: "Section", options: MediaKind.allCases.filter { $0 != .photo }, selection: [kind], label: { $0.label }) {
                 if let value = $0.first { kind = value }
             }
         case .genre:
@@ -262,7 +262,7 @@ struct HomeView: View {
     @Query(sort: \Movie.dateAdded, order: .reverse) private var movies: [Movie]
     @EnvironmentObject private var scanner: LibraryScanner
 
-    private var available: [Movie] { movies.filter { !$0.isHidden && !$0.isMissing } }
+    private var available: [Movie] { movies.filter { !$0.isHidden && !$0.isMissing && $0.mediaKind != .photo } }
     private var continuing: [Movie] {
         available.filter { $0.isInProgress && $0.mediaKind != .music }
             .sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
@@ -281,7 +281,7 @@ struct HomeView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .tracking(3)
                             .foregroundStyle(CinemaTheme.accent)
-                        Text("Welcome to Cine-Media")
+                        Text("Welcome to CoveShelf")
                             .font(.system(size: 54, weight: .bold))
                     }
                     Spacer()
@@ -327,7 +327,8 @@ struct SearchView: View {
     private var results: [Movie] {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
         let needle = TitleMatcher.normalize(text)
-        return movies.filter { LibrarySearch.matches($0, text: text, normalized: needle) }
+        return movies.filter { LibrarySearch.matches($0, text: text, normalized: needle) &&
+            ($0.mediaKind != .photo || PhotoLibrary.isAvailable($0)) }
         .sorted { $0.sortTitle < $1.sortTitle }
     }
 
@@ -337,7 +338,7 @@ struct SearchView: View {
                 Text("Search").font(.system(size: 62, weight: .bold))
                 if text.isEmpty {
                     ContentUnavailableView("Search your collection", systemImage: "magnifyingglass",
-                                           description: Text("Find a movie by title, genre or file name."))
+                                           description: Text("Find movies, shows, music and photos by title or file name."))
                         .padding(.top, 100)
                 } else if results.isEmpty {
                     ContentUnavailableView("No results", systemImage: "magnifyingglass",
@@ -346,7 +347,13 @@ struct SearchView: View {
                 } else {
                     Text("\(results.count) results")
                         .foregroundStyle(CinemaTheme.secondaryText)
-                    PosterGrid(movies: results)
+                    if results.contains(where: { $0.mediaKind != .photo }) {
+                        PosterGrid(movies: results.filter { $0.mediaKind != .photo })
+                    }
+                    if results.contains(where: { $0.mediaKind == .photo }) {
+                        Text("Photos").font(.title2)
+                        PhotoGrid(photos: results.filter { $0.mediaKind == .photo })
+                    }
                 }
             }
             .padding(.horizontal, 70)

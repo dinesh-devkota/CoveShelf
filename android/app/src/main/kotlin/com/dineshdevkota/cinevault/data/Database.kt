@@ -26,6 +26,9 @@ interface SourceDao {
     @Query("SELECT * FROM sources WHERE id = :id")
     suspend fun get(id: String): SourceEntity?
 
+    @Query("SELECT * FROM sources WHERE id = :id")
+    fun observe(id: String): Flow<SourceEntity?>
+
     @Upsert
     suspend fun upsert(source: SourceEntity)
 

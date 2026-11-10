@@ -62,8 +62,9 @@ import com.dineshdevkota.cinevault.core.LibraryQuery
 import com.dineshdevkota.cinevault.core.LibrarySort
 import com.dineshdevkota.cinevault.core.Tmdb
 import com.dineshdevkota.cinevault.data.MovieEntity
+import com.dineshdevkota.cinevault.photos.photoAvailable
 
-private val tabs = listOf("Home", "Library", "Search", "Sources", "Settings")
+private val tabs = listOf("Home", "Library", "Photos", "Search", "Sources", "Settings")
 
 @Composable
 fun RootScreen() {
@@ -72,7 +73,9 @@ fun RootScreen() {
     val movies by remember { container.database.movies().observeAll() }.collectAsStateWithLifecycle(emptyList())
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabFocus = remember { List(tabs.size) { FocusRequester() } }
-    val openMovie: (MovieEntity) -> Unit = { MovieDetailActivity.start(context, it.id) }
+    val openMovie: (MovieEntity) -> Unit = {
+        if (it.isPhoto) PhotoViewerActivity.start(context, it.id) else MovieDetailActivity.start(context, it.id)
+    }
 
     var tabRowFocused by remember { mutableStateOf(false) }
     var initialFocusRequested by remember { mutableStateOf(false) }
@@ -124,8 +127,9 @@ fun RootScreen() {
             when (tab) {
                 0 -> HomeTab(movies, openMovie)
                 1 -> MoviesTab(movies, openMovie)
-                2 -> SearchTab(movies, openMovie)
-                3 -> SourcesTab(movies)
+                2 -> PhotosTab(movies)
+                3 -> SearchTab(movies, openMovie)
+                4 -> SourcesTab(movies)
                 else -> SettingsTab()
             }
         }
@@ -140,10 +144,10 @@ private fun HomeTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) {
     var selectedShowId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedShowCollection by rememberSaveable { mutableStateOf(HomeShowCollection.ALL) }
     val status by LocalContext.current.container.scanner.status.collectAsStateWithLifecycle()
-    val available = remember(movies) { movies.filter { !it.isHidden && !it.isMissing }.sortedByDescending { it.addedAt } }
+    val available = remember(movies) { movies.filter { !it.isPhoto && !it.isHidden && !it.isMissing }.sortedByDescending { it.addedAt } }
     val collections = remember(available) { available.groupBy { it.mediaKind } }
     val continuing = remember(movies) { LibraryQuery.continueWatching(movies).filter { it.mediaKind != MediaKind.MUSIC }.take(20) }
-    val watchlist = remember(movies) { LibraryQuery.watchlist(movies) }
+    val watchlist = remember(movies) { LibraryQuery.watchlist(movies).filterNot { it.isPhoto } }
     val unwatched = remember(available) { available.filter { !it.isWatched } }
     val featured = remember(available) {
         val fresh = available.filter { !it.isWatched && !it.isInProgress && it.mediaKind != MediaKind.MUSIC }
@@ -164,7 +168,7 @@ private fun HomeTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(bottom = 48.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
             ScreenHeader(
-                "Welcome to Cine-Media",
+                "Welcome to CoveShelf",
                 Modifier.padding(horizontal = ScreenPadding),
                 kicker = "YOUR PERSONAL CINEMA",
                 trailing = status,
@@ -264,7 +268,10 @@ private fun LazyGridScope.fullWidth(content: @Composable () -> Unit) {
 }
 
 private fun LazyGridScope.posters(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) {
-    items(movies, key = { it.id }) { movie -> PosterCard(movie, onClick = { onOpen(movie) }) }
+    items(movies, key = { it.id }) { movie ->
+        if (movie.isPhoto) PhotoTile(movie, onClick = { onOpen(movie) })
+        else PosterCard(movie, onClick = { onOpen(movie) })
+    }
 }
 
 @Composable
@@ -328,7 +335,7 @@ private fun MoviesTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
                 LibraryFilterMenu("Decade", facets.decades, decades, { "${it}s" }, {
                     saveFacets(facets.copy(decades = it))
                 }, Modifier.weight(1f), allLabel = "All decades")
-                LibraryFilterMenu("Section", setOf(kind), MediaKind.entries, { it.label }, {
+                LibraryFilterMenu("Section", setOf(kind), MediaKind.entries.filterNot { it == MediaKind.PHOTO }, { it.label }, {
                     val selectedKind = it.single()
                     if (selectedKind != kind) {
                         kind = selectedKind
@@ -369,9 +376,14 @@ private fun MoviesTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
 
 @Composable
 private fun SearchTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) {
+    val container = LocalContext.current.container
+    val sources by remember { container.database.sources().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val sourceById = remember(sources) { sources.associateBy { it.id } }
     var text by rememberSaveable { mutableStateOf("") }
-    val results = remember(movies, text) {
-        if (text.isBlank()) emptyList() else movies.filter { LibraryQuery.searchMatches(it, text) }.sortedBy { it.sortTitle }
+    val results = remember(movies, text, sourceById) {
+        if (text.isBlank()) emptyList() else movies.filter {
+            LibraryQuery.searchMatches(it, text) && (!it.isPhoto || photoAvailable(it, sourceById[it.sourceId]))
+        }.sortedBy { it.sortTitle }
     }
 
     MovieGrid {
@@ -387,7 +399,7 @@ private fun SearchTab(movies: List<MovieEntity>, onOpen: (MovieEntity) -> Unit) 
         }
         when {
             text.isBlank() -> fullWidth {
-                EmptyState("Search your collection", "Find a movie by title, genre or file name.")
+                EmptyState("Search your collection", "Find media and photos by title, genre or file name.")
             }
             results.isEmpty() -> fullWidth { EmptyState("No results", "Try a different search.") }
             else -> {

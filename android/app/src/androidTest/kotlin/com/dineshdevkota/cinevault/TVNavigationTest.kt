@@ -27,6 +27,8 @@ class TVNavigationTest {
             device.pressDPadRight()
             visible("No movies yet")
             device.pressDPadRight()
+            visible("Your photos, on the big screen")
+            device.pressDPadRight()
             visible("Search your collection")
             device.pressDPadRight()
             visible("No NAS sources yet")
@@ -42,7 +44,7 @@ class TVNavigationTest {
         ActivityScenario.launch(MainActivity::class.java).use { activity ->
             scenario = activity
             visible("Your movie collection starts here")
-            repeat(3) { device.pressDPadRight() }
+            repeat(4) { device.pressDPadRight() }
             visible("No NAS sources yet")
             activity.recreate()
             visible("No NAS sources yet")
@@ -60,7 +62,7 @@ class TVNavigationTest {
         val xml = ByteArrayOutputStream().also { device.dumpWindowHierarchy(it) }.toString("UTF-8")
         val relevant = Regex("<node\\b[^>]*>").findAll(xml).map { it.value }.filter { node ->
             node.contains("focused=\"true\"") || node.contains("selected=\"true\"") ||
-                listOf("Home", "Library", "Search", "Sources", "Settings").any { node.contains("text=\"$it\"") }
+                listOf("Home", "Library", "Photos", "Search", "Sources", "Settings").any { node.contains("text=\"$it\"") }
         }.map { node ->
             val attributes = Regex("([\\w-]+)=\"([^\"]*)\"").findAll(node)
                 .associate { it.groupValues[1] to it.groupValues[2] }

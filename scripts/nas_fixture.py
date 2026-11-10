@@ -53,9 +53,25 @@ def main() -> None:
     (checks / "node_modules").mkdir(exist_ok=True)
     (checks / "node_modules" / "Not Media.mp4").write_bytes(b"scan-fixture-only")
 
+    # A separate share keeps existing video scan expectations unchanged.
+    photo_root = root.with_name(root.name + "-photos")
+    trip = photo_root / "Photos" / "Trip"
+    family = photo_root / "Photos" / "Family"
+    validation = photo_root / "Validation"
+    for folder in (trip, family, validation):
+        folder.mkdir(parents=True, exist_ok=True)
+    samples = Path(__file__).resolve().parents[1] / "CineVaultTests" / "Fixtures" / "Photos"
+    for name in ("01.jpg", "02.png", "03.webp"):
+        shutil.copyfile(samples / name, trip / name)
+    shutil.copyfile(samples / "portrait.jpg", family / "portrait.jpg")
+    (trip / "broken.jpg").write_bytes(b"This is a corrupt image fixture, not a photograph.")
+    with (validation / "TooLarge.jpg").open("wb") as oversized:
+        oversized.truncate(65 * 1024 * 1024)
+
     logging.basicConfig(level=logging.INFO)
     server = smbserver.SimpleSMBServer(listenAddress="127.0.0.1", listenPort=1445)
     server.addShare("CINEVAULT", str(root), readOnly="yes")
+    server.addShare("COVEPHOTOS", str(photo_root), readOnly="yes")
     server.setSMB2Support(True)
     server.addCredential("cinevault", 0, compute_lmhash("fixture-only"), compute_nthash("fixture-only"))
     server.start()

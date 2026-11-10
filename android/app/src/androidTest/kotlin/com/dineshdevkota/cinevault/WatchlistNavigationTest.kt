@@ -225,7 +225,7 @@ class WatchlistNavigationTest {
                     !scanning && status?.startsWith("Scan failed for ${lastSource.name}:") == true
                 }.first { it }
             }
-            visible("Welcome to Cine-Media")
+            visible("Welcome to CoveShelf")
             return scenario
         } catch (error: Throwable) {
             scenario.close()

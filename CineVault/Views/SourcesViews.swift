@@ -17,7 +17,7 @@ struct SourcesView: View {
             Section {
                 Button { adding = true } label: { Label("Add NAS", systemImage: "plus") }.buttonStyle(.borderedProminent)
                 if sources.isEmpty {
-                    Text("Connect a NAS, choose your media folder, and Cine-Media will add its movies, shows and music.")
+                    Text("Connect a NAS, choose your media folder, and CoveShelf will add its movies, shows, music and photos.")
                         .foregroundStyle(.secondary)
                 }
                 if let status = scanner.status {
@@ -180,7 +180,7 @@ struct SourceEditorView: View {
             }
         }
         .navigationTitle(source == nil ? "Add NAS" : "Edit NAS")
-        .confirmationDialog("Remove this source from Cine-Media? Your NAS files will be kept.", isPresented: $confirmingDelete, titleVisibility: .visible) {
+        .confirmationDialog("Remove this source from CoveShelf? Your NAS files will be kept.", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Remove source", role: .destructive) { delete() }
             Button("Cancel", role: .cancel) { }
         }
@@ -361,7 +361,7 @@ struct SettingsView: View {
                 Text(message ?? "Get a free key at themoviedb.org → Settings → API. Posters and details are fetched automatically after each scan.")
             }
             Section("About") {
-                Text("Cine-Media plays MP4/M4V/MOV directly from your NAS over SMB. Other video containers require conversion to a supported container and compatible codecs.")
+                Text("CoveShelf plays MP4/M4V/MOV directly from your NAS over SMB. Other video containers require conversion to a supported container and compatible codecs.")
                     .font(.caption)
                 Text("This product uses the TMDB API but is not endorsed or certified by TMDB.").font(.caption)
             }

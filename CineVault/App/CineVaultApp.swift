@@ -1,4 +1,5 @@
 import Foundation
+import CineVaultCore
 import SwiftData
 import SwiftUI
 
@@ -11,7 +12,9 @@ struct CineVaultApp: App {
         WindowGroup {
             Group {
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas-folder") {
+                if PhotoDesignPreview.isEnabled {
+                    PhotoDesignPreview()
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas-folder") {
                     NASSetupView.folderPreview.environmentObject(scanner)
                         .modelContainer(for: [MediaSource.self, Movie.self], inMemory: true)
                 } else if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas") {
@@ -46,6 +49,7 @@ struct RootView: View {
         TabView {
             NavigationStack { HomeView().movieDestination() }.tabItem { Text("Home") }
             NavigationStack { LibraryView().movieDestination() }.tabItem { Text("Library") }
+            NavigationStack { PhotosView().movieDestination() }.tabItem { Text("Photos") }
             NavigationStack { SearchView().movieDestination() }.tabItem { Image(systemName: "magnifyingglass") }
             NavigationStack { SourcesView() }.tabItem { Text("Sources") }
             NavigationStack { SettingsView() }.tabItem { Image(systemName: "gearshape") }
@@ -73,7 +77,11 @@ struct RootView: View {
 }
 
 extension View {
+    @MainActor
     func movieDestination() -> some View {
-        navigationDestination(for: Movie.self) { MovieDetailView(movie: $0) }
+        navigationDestination(for: Movie.self) { movie in
+            if MediaFile.isPhoto(path: movie.filePath) { PhotoDestination(photo: movie) }
+            else { MovieDetailView(movie: movie) }
+        }
     }
 }

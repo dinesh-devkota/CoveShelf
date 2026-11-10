@@ -22,6 +22,11 @@ struct MovieDetailView: View {
     @State private var loadingError: String?
 
     var body: some View {
+        if MediaFile.isPhoto(path: movie.filePath) { PhotoDestination(photo: movie) }
+        else { movieContent }
+    }
+
+    private var movieContent: some View {
         ZStack(alignment: .topLeading) {
             MovieBackdrop(movie: movie)
                 .ignoresSafeArea()
@@ -43,7 +48,7 @@ struct MovieDetailView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     Button { dismiss() } label: { Label("Back", systemImage: "chevron.left") }
                         .buttonStyle(.bordered)
-                    Text("CINE-MEDIA  /  \(movie.mediaKind.label.uppercased())")
+                    Text("COVESHELF  /  \(movie.mediaKind.label.uppercased())")
                         .font(.system(size: 18, weight: .semibold))
                         .tracking(3)
                         .foregroundStyle(CinemaTheme.accent)

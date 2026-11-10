@@ -323,7 +323,7 @@ private fun NasSetupScreen(onDone: () -> Unit) {
             SetupStep.Folders -> {
                 item {
                     Text("$share / ${rootPath.ifBlank { "Top level" }}", style = MaterialTheme.typography.titleMedium)
-                    Text("Choose a parent folder to include its movies, shows and music. You can exclude folders or files below.", color = SecondaryText)
+                    Text("Choose a parent folder to include its movies, shows, music and photos. You can exclude folders or files below.", color = SecondaryText)
                     TvTextField(name, { name = it }, "Library name (optional)", enabled = !busy)
                 }
                 item {

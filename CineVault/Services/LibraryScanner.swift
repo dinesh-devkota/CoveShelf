@@ -79,7 +79,7 @@ final class LibraryScanner: ObservableObject {
             }
             func scanSummary() -> String {
                 let counts = Dictionary(grouping: source.movies.filter { !$0.isMissing }, by: \.mediaKind)
-                return "\(source.name): \(counts[.movie]?.count ?? 0) movies, \(counts[.documentary]?.count ?? 0) documentaries, \(counts[.tvShow]?.count ?? 0) TV episodes, \(counts[.music]?.count ?? 0) music items (\(state.added) new)"
+                return "\(source.name): \(counts[.movie]?.count ?? 0) movies, \(counts[.documentary]?.count ?? 0) documentaries, \(counts[.tvShow]?.count ?? 0) TV episodes, \(counts[.music]?.count ?? 0) music items, \(counts[.photo]?.count ?? 0) photos (\(state.added) new)"
             }
             status = scanSummary()
             do {
@@ -156,14 +156,14 @@ private final class LibraryScanState {
     func insert(_ file: RemoteFile) -> Movie {
         let movie = Movie(filePath: file.path, fileSize: file.size, source: source)
         let parsed = FilenameParser.parse(path: file.path)
-        let audio = MediaFile.isAudio(path: file.path)
-        let title = audio ? (movie.fileName as NSString).deletingPathExtension : parsed.title
+        let localOnly = MediaFile.isAudio(path: file.path) || MediaFile.isPhoto(path: file.path)
+        let title = localOnly ? (movie.fileName as NSString).deletingPathExtension : parsed.title
         movie.parsedTitle = title
-        movie.parsedYear = audio ? nil : parsed.year
-        movie.tmdbID = audio ? nil : parsed.tmdbID
+        movie.parsedYear = localOnly ? nil : parsed.year
+        movie.tmdbID = localOnly ? nil : parsed.tmdbID
         movie.setTitle(title.isEmpty ? movie.fileName : title)
-        movie.year = audio ? nil : parsed.year
-        movie.metadataFetched = audio
+        movie.year = localOnly ? nil : parsed.year
+        movie.metadataFetched = localOnly
         context.insert(movie)
         indexed[file.path] = movie
         added += 1

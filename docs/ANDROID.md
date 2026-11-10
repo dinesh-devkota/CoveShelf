@@ -1,8 +1,8 @@
 # Android TV
 
-Cine-Media reads media directly from SMB shares without a media server or
+CoveShelf reads media directly from SMB shares without a media server or
 transcoding. The development build includes library browsing, search, sources,
-movie details, TMDB metadata, playback, and library editing.
+movie details, TMDB metadata, playback, photo albums, and library editing.
 
 ## Build and install
 
@@ -29,21 +29,21 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 For a downloaded artifact, replace the APK path with its extracted location.
-Open Cine-Media from the TV launcher. The device or emulator must be able to reach
+Open CoveShelf from the TV launcher. The device or emulator must be able to reach
 the NAS; enter its hostname or LAN address, not `localhost`.
 
 ## Connect a NAS
 
 Open **Home → Find my NAS** or **Sources → Add NAS Source**. The app searches
-for SMB services advertised through Bonjour/mDNS for ten seconds. Selecting a
+for SMB services advertised through Bonjour/mDNS. Selecting a
 device fills its address and port and tries to list shared folders as a guest.
-If access fails, enter your NAS username and password in the sign-in fields and
-retry **Find shared folders**. Choose a share, browse to your movie folder, then
+If sign-in is required, enter your NAS username and password in the sign-in fields and
+choose **Connect**. Choose a share, browse to your media folder, then
 select **Use this folder & scan**. Subfolders are included in the scan.
 
 If discovery returns no devices, choose **Enter NAS address** and provide the
 NAS hostname or LAN address (not `localhost`). Port 445 is the SMB default.
-**Enter share** supports NAS accounts that can access a known share but cannot
+**Enter shared folder** supports NAS accounts that can access a known share but cannot
 list all shares. Existing sources retain the manual editor and connection test.
 
 Discovery requires the NAS to advertise `_smb._tcp` and the network to carry
@@ -53,6 +53,11 @@ is offline. A physical TV must also share a reachable network with the NAS.
 
 Credentials stay in memory during setup and are saved encrypted only when you
 save the source. Do not include passwords in issue reports or screenshots.
+
+Keep photos in folders such as `Media/Photos/Family Trip`, include their parent
+in the source, and scan again. Open **Photos** to choose a folder album and a
+thumbnail, then use **Previous**, **Next**, and **Back** in the viewer. See the
+[photo guide](MEDIA-GUIDE.md#browse-photo-albums) for formats and loading help.
 
 TV remote/keyboard navigation uses arrows and Enter. Buttons, tabs, and movie
 cards also support pointer taps. For mouse testing, the TV emulator must expose

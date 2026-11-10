@@ -5,7 +5,7 @@ default_platform(:ios)
 BUNDLE_ID = ENV.fetch("APP_BUNDLE_ID", "com.dineshdevkota.cinevault")
 
 platform :ios do
-  desc "Build CineVault for tvOS and upload it to TestFlight"
+  desc "Build CoveShelf for tvOS and upload it to TestFlight"
   lane :beta do
     setup_ci
 

@@ -2,18 +2,21 @@ package com.dineshdevkota.cinevault.core
 
 import java.util.Locale
 
-enum class MediaKind(val label: String) { MOVIE("Movies"), TV_SHOW("TV Shows"), DOCUMENTARY("Documentaries"), MUSIC("Music") }
+enum class MediaKind(val label: String) { MOVIE("Movies"), TV_SHOW("TV Shows"), DOCUMENTARY("Documentaries"), MUSIC("Music"), PHOTO("Photos") }
 
 /** Library policy for one parent folder containing videos and audio. */
 object MediaFile {
     private val audio = setOf("mp3", "m4a", "aac", "flac", "wav", "aiff", "aif", "ogg", "opus", "wma")
     private val playableAudio = setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus")
+    private val photos = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
     private fun parts(path: String) = path.replace('\\', '/').split('/').filter { it.isNotEmpty() }
     private fun extension(path: String) = parts(path).lastOrNull()?.substringAfterLast('.', "")?.lowercase(Locale.ROOT).orEmpty()
     private fun isTypeScriptDeclaration(path: String) = parts(path).lastOrNull()?.endsWith(".d.ts", ignoreCase = true) == true
     fun isAudio(path: String): Boolean = extension(path) in audio
+    fun isPhoto(path: String): Boolean = extension(path) in photos
     fun kind(path: String, genres: List<String> = emptyList(), matched: Boolean = false,
              isEpisode: Boolean = EpisodeParser.parse(path) != null): MediaKind {
+        if (isPhoto(path)) return MediaKind.PHOTO
         if (isAudio(path)) return MediaKind.MUSIC
         if (isEpisode) return MediaKind.TV_SHOW
         if (matched) {
@@ -40,7 +43,7 @@ object MediaFile {
     }
     fun shouldIndex(path: String, size: Long): Boolean {
         if (size <= 0 || isTypeScriptDeclaration(path) || parts(path).any(::shouldSkipDirectory)) return false
-        return extension(path) in audio || VideoFile.shouldIndex(path.replace('\\', '/'), size, minimumSize = 1)
+        return isPhoto(path) || extension(path) in audio || VideoFile.shouldIndex(path.replace('\\', '/'), size, minimumSize = 1)
     }
 
     internal fun isPlaybackPathAllowed(path: String): Boolean =

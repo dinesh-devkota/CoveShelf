@@ -126,7 +126,7 @@ class LibraryScannerTest {
         scanner.scan(source.id)
         assertTrue(database.movies().get(old.id)!!.isMissing)
         assertTrue(database.sources().get(source.id)!!.lastScanAt != null)
-        assertTrue(scanner.status.value!!.contains("1 movies, 1 documentaries, 0 TV episodes, 0 music items (2 new)"))
+        assertTrue(scanner.status.value!!.contains("1 movies, 1 documentaries, 0 TV episodes, 0 music items, 0 photos (2 new)"))
     }
 
     @Test fun savingExclusionsHidesExistingItemsAndRemovingRulesRestoresHistoryAfterRescan() = runBlocking {

@@ -30,7 +30,7 @@ final class MediaFileTests: XCTestCase {
         XCTAssertTrue(MediaFile.shouldIndex(path: "Movies/Short.mp4", size: 100))
         XCTAssertTrue(MediaFile.shouldIndex(path: "Music/Track.mp3", size: 100))
         XCTAssertFalse(MediaFile.shouldIndex(path: "Movies/Empty.mp4", size: 0))
-        XCTAssertFalse(MediaFile.shouldIndex(path: "Music/Cover.jpg", size: 100))
+        XCTAssertTrue(MediaFile.shouldIndex(path: "Music/Cover.jpg", size: 100))
     }
     func testMusicTitlesDoNotUseMovieExtrasExclusions() {
         XCTAssertTrue(MediaFile.shouldIndex(path: "Music/Sample/Extras/sample.mp3", size: 100))

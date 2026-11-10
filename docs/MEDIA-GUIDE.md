@@ -1,12 +1,12 @@
-# Cine-Media user guide
+# CoveShelf user guide
 
-Cine-Media organizes media stored on your NAS and plays it directly over your
+CoveShelf organizes media stored on your NAS and opens it directly over your
 network. Your files stay on the NAS; no media server or transcoding box is needed.
 
 ## Connect one shared parent folder
 
 In **Sources**, choose **Add NAS** (**Add NAS Source** on Android), then select a discovered NAS or enter
-its address. Cine-Media tries guest access first. If your NAS requires an account,
+its address. CoveShelf tries guest access first. If your NAS requires an account,
 choose **Sign in** and enter its username and password in the app. A read-only NAS
 account is recommended; keep its password out of chat, screenshots, and issue reports.
 
@@ -23,11 +23,11 @@ when your NAS needs one. If it restricts share browsing, enter the share name ma
 
 If the share itself is named `Media`, select it and use its top-level folder.
 If `Media` is inside another share, select that share and choose its `Media`
-folder. Cine-Media scans the selected folder and all its subfolders recursively.
+folder. CoveShelf scans the selected folder and all its subfolders recursively.
 You do not need to add each movie, show, or category separately.
 
 A source pointing to `Media/Movies` finds only that folder and its descendants.
-It cannot find sibling `Music` or `TV Shows` folders. Edit the source to use the
+It cannot find sibling `Music`, `TV Shows`, or `Photos` folders. Edit the source to use the
 common `Media` parent, then scan again.
 
 ## Choose what to scan or ignore
@@ -68,6 +68,7 @@ Media/
   Documentaries/Documentary Title (2020)/Documentary Title (2020).mp4
   TV Shows/Show Name (2020)/Season 01/ShowName.S01E01.mkv
   Music/Artist/Album/01-Song.mp3
+  Photos/Family Trip/Beach.jpg
 ```
 
 Include a title and release year for movies and documentaries. For television,
@@ -91,10 +92,25 @@ For audio music, consistent artist and album folders help identify the files.
 TMDB is not an audio album catalog: its Music category describes screen content
 such as music films, not MP3 artist, album, or cover-art information.
 
+## Browse photo albums
+
+Keep related photos in a folder, such as `Media/Photos/Family Trip`. Include that
+folder or its parent in your NAS source and scan again. Open **Photos**, choose
+an album, and select a thumbnail to view the photo full screen. **Previous** and
+**Next** move through the album; **Back** returns to its thumbnails.
+
+Albums follow the NAS source and the folder containing each photo. Both apps
+recognize JPEG (`.jpg`, `.jpeg`), PNG, WebP, HEIC, and HEIF files. Viewing depends
+on the device's image decoder; a damaged file or unsupported encoding may not
+open. Keep the NAS reachable while browsing, and use **Try again** if a photo
+could not be loaded. Files larger than 64 MB cannot be opened; large images are
+reduced for display without changing the original. Photos are read directly
+from the NAS and are not sent to TMDB.
+
 ## Add metadata and artwork
 
 For personal use, obtain a free TMDB API key or read access token from
-themoviedb.org under **Settings → API**. Enter it in Cine-Media's **Settings** and
+themoviedb.org under **Settings → API**. Enter it in CoveShelf's **Settings** and
 choose **Save Key & Fetch Missing Metadata**. Do not paste the key into chat.
 Matching sends the parsed title and year to TMDB; your media files stay on the NAS.
 See [TMDB's API FAQ](https://developer.themoviedb.org/docs/faq) for personal-use terms.
@@ -131,7 +147,7 @@ before completion; they do not mean every folder has finished. Check the status
 and the last successful scan time. If a scan fails, correct the connection or
 credentials and retry.
 
-Cine-Media does not transcode. A filename extension identifies a candidate
+CoveShelf does not transcode. A filename extension identifies a candidate
 format; the file must contain real media, and the device must support the
 audio/video codecs inside it. Unsupported formats show an explanation instead
 of Play controls. Apple TV also checks the actual asset before starting playback.

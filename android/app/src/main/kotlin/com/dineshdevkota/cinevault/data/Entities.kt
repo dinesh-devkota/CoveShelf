@@ -98,9 +98,10 @@ data class MovieEntity(
     override val isHidden: Boolean = false,
     override val isMissing: Boolean = false,
 ) : LibraryEntry {
+    override val isPhoto: Boolean get() = MediaFile.isPhoto(filePath)
     val episodeInfo: EpisodeInfo?
         get() {
-            if (MediaFile.isAudio(filePath)) return null
+            if (MediaFile.isAudio(filePath) || isPhoto) return null
             val local = EpisodeParser.parse(filePath)
             val name = (seriesTitle ?: local?.seriesTitle)?.takeIf { it.isNotBlank() } ?: return null
             val season = (seasonNumber ?: local?.season)?.takeIf { it in 0..999 } ?: return null

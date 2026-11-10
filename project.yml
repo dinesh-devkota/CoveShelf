@@ -36,12 +36,12 @@ targets:
     info:
       path: CineVault/Info.plist
       properties:
-        CFBundleDisplayName: Cine-Media
+        CFBundleDisplayName: CoveShelf
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         UIRequiredDeviceCapabilities: [arm64]
-        NSLocalNetworkUsageDescription: Cine-Media connects to your NAS on the local network to browse and play media.
+        NSLocalNetworkUsageDescription: CoveShelf connects to your NAS on the local network to browse and play media.
         NSBonjourServices: ["_smb._tcp"]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

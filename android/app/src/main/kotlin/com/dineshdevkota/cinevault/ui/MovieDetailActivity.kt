@@ -80,6 +80,10 @@ private fun MovieDetailScreen(movieId: String, onClose: () -> Unit) {
         database.movies().observe(movieId).collect { if (it == null) onClose() else value = it }
     }
     val current = movie ?: return
+    if (current.isPhoto) {
+        LaunchedEffect(current.id) { PhotoViewerActivity.start(context, current.id); onClose() }
+        return
+    }
     val playbackRejection = PlaybackValidator.rejectionReason(current)
     val sourceName by produceState<String?>(null, current.sourceId) {
         value = database.sources().get(current.sourceId)?.name
@@ -115,7 +119,7 @@ private fun MovieDetailScreen(movieId: String, onClose: () -> Unit) {
                 OutlinedButton(onClick = onClose,
                     modifier = if (playbackRejection != null) Modifier.focusRequester(actions) else Modifier) { Text("Back") }
                 Text(
-                    "CINE-MEDIA  /  ${current.mediaKind.label.uppercase(Locale.ROOT)}",
+                    "COVESHELF  /  ${current.mediaKind.label.uppercase(Locale.ROOT)}",
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
                     color = Accent,
                 )

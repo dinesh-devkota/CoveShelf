@@ -257,6 +257,7 @@ final class MetadataService {
     /// Applies TMDB details to a movie. `force` is used by manual re-match.
     @discardableResult
     func apply(tmdbID: Int, to movie: Movie, force: Bool = false) async throws -> Bool {
+        guard !MediaFile.isPhoto(path: movie.filePath) else { return false }
         guard !movie.isDeleted else { return false }
         let reference = MovieReference(movie)
         guard let token = beginRequest(for: reference, manual: force) else { return false }
@@ -291,7 +292,7 @@ final class MetadataService {
     /// Auto-match: uses a {tmdb-123} tag if present, otherwise title/year search.
     func match(_ movie: Movie) async throws {
         guard !movie.isDeleted, !movie.isMissing, movie.source?.isIgnored(filePath: movie.filePath) != true else { return }
-        guard !MediaFile.isAudio(path: movie.filePath) else { movie.metadataFetched = true; return }
+        guard !MediaFile.isAudio(path: movie.filePath), !MediaFile.isPhoto(path: movie.filePath) else { movie.metadataFetched = true; return }
         let reference = MovieReference(movie)
         guard let token = beginRequest(for: reference, manual: false) else { return }
         defer { finishRequest(for: reference, token: token) }
@@ -322,7 +323,7 @@ final class MetadataService {
         let descriptor = FetchDescriptor<Movie>(predicate: #Predicate { !$0.isMissing && (!$0.metadataFetched || $0.seriesTitle == nil) })
         let movies = try context.fetch(descriptor).filter {
             !$0.isMissing && $0.source?.isIgnored(filePath: $0.filePath) != true &&
-                !MediaFile.isAudio(path: $0.filePath) && (!$0.metadataFetched ||
+                !MediaFile.isAudio(path: $0.filePath) && !MediaFile.isPhoto(path: $0.filePath) && (!$0.metadataFetched ||
                 (!$0.isLocked && $0.seriesTitle == nil && $0.episodeInfo != nil))
         }
         return try await update(movies, in: context) { try await self.match($0) }

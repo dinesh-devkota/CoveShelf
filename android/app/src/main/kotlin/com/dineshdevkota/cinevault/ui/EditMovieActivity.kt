@@ -81,6 +81,10 @@ private fun EditMovieScreen(movieId: String, onClose: () -> Unit) {
         container.database.movies().observe(movieId).collect { if (it == null) onClose() else value = it }
     }
     val current = movie ?: return
+    if (current.isPhoto) {
+        LaunchedEffect(current.id) { onClose() }
+        return
+    }
     // Keyed so the fields follow the saved movie, e.g. after a reset whose re-match failed.
     var title by remember(current.title) { mutableStateOf(current.title) }
     var year by remember(current.year) { mutableStateOf(current.year?.toString().orEmpty()) }

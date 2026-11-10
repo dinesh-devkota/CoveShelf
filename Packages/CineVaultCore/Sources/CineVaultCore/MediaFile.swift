@@ -4,14 +4,15 @@ import UniformTypeIdentifiers
 #endif
 
 public enum MediaKind: String, CaseIterable, Hashable, Sendable {
-    case movie, tvShow, documentary, music
+    case movie, tvShow, documentary, music, photo
     public var label: String {
-        switch self { case .movie: return "Movies"; case .tvShow: return "TV Shows"; case .documentary: return "Documentaries"; case .music: return "Music" }
+        switch self { case .movie: return "Movies"; case .tvShow: return "TV Shows"; case .documentary: return "Documentaries"; case .music: return "Music"; case .photo: return "Photos" }
     }
 }
 
 public enum MediaFile {
     private static let audio: Set<String> = ["mp3", "m4a", "aac", "flac", "wav", "aiff", "aif", "ogg", "opus", "wma"]
+    private static let photos: Set<String> = ["jpg", "jpeg", "png", "webp", "heic", "heif"]
     private static func parts(_ path: String) -> [String] {
         path.replacingOccurrences(of: "\\", with: "/").split(separator: "/").map(String.init)
     }
@@ -19,7 +20,9 @@ public enum MediaFile {
         parts(path).last?.lowercased().hasSuffix(".d.ts") == true
     }
     public static func isAudio(path: String) -> Bool { audio.contains((path as NSString).pathExtension.lowercased()) }
+    public static func isPhoto(path: String) -> Bool { photos.contains((path as NSString).pathExtension.lowercased()) }
     public static func kind(path: String, genres: [String] = [], matched: Bool = false, isEpisode: Bool? = nil) -> MediaKind {
+        if isPhoto(path: path) { return .photo }
         if isAudio(path: path) { return .music }
         if isEpisode ?? (EpisodeParser.parse(path: path) != nil) { return .tvShow }
         if matched {
@@ -45,7 +48,7 @@ public enum MediaFile {
     }
     public static func shouldIndex(path: String, size: Int64) -> Bool {
         guard size > 0, !isTypeScriptDeclaration(path), !parts(path).contains(where: { shouldSkipDirectory(name: $0) }) else { return false }
-        return audio.contains((path as NSString).pathExtension.lowercased()) ||
+        return isPhoto(path: path) || audio.contains((path as NSString).pathExtension.lowercased()) ||
             VideoFile.shouldIndex(path: path.replacingOccurrences(of: "\\", with: "/"), size: size, minimumSize: 1)
     }
     static func isPlaybackPathAllowed(_ path: String) -> Bool {

@@ -107,7 +107,7 @@ class MetadataService(private val database: CineVaultDatabase, val tmdb: TmdbCli
     }
 
     private suspend fun matchLocked(movie: MovieEntity) {
-        if (MediaFile.isAudio(movie.filePath)) return
+        if (MediaFile.isAudio(movie.filePath) || movie.isPhoto) return
         movie.episodeInfo?.let { return matchTVLocked(movie, it) }
         movie.tmdbId?.let { return applyLocked(it, movie.id) }
         val title = if (movie.isLocked) movie.title else movie.parsedTitle
@@ -119,8 +119,8 @@ class MetadataService(private val database: CineVaultDatabase, val tmdb: TmdbCli
         }
     }
 
-    private fun needsMetadata(movie: MovieEntity): Boolean = !movie.metadataFetched ||
-        (!movie.isLocked && movie.seriesTitle == null && movie.episodeInfo != null)
+    private fun needsMetadata(movie: MovieEntity): Boolean = !movie.isPhoto && (!movie.metadataFetched ||
+        (!movie.isLocked && movie.seriesTitle == null && movie.episodeInfo != null))
 
     private suspend fun matchTVLocked(movie: MovieEntity, info: EpisodeInfo) {
         val id = movie.seriesTmdbId ?: TitleMatcher.bestMatch(info.seriesTitle, info.year,
@@ -179,6 +179,7 @@ class MetadataService(private val database: CineVaultDatabase, val tmdb: TmdbCli
     suspend fun resetToFile(movieId: String) = mutationLock.withLock {
         val movies = database.movies()
         val movie = movies.get(movieId) ?: return@withLock
+        if (movie.isPhoto) return@withLock
         val fromFile = MovieEdits.fromFile(movie.filePath)
         movies.resetToFile(
             movieId, fromFile.title, WatchRules.sortTitle(fromFile.title), fromFile.year,
@@ -197,7 +198,7 @@ class MetadataService(private val database: CineVaultDatabase, val tmdb: TmdbCli
 
     private suspend fun applyLocked(tmdbId: Int, movieId: String, force: Boolean = false) {
         val movies = database.movies()
-        val original = movies.get(movieId)?.takeUnless { it.isMissing } ?: return
+        val original = movies.get(movieId)?.takeUnless { it.isMissing || it.isPhoto } ?: return
         val details = tmdb.details(tmdbId)
         database.withTransaction {
             val current = movies.get(movieId) ?: return@withTransaction

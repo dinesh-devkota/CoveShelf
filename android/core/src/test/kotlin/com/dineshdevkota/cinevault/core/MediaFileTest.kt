@@ -32,7 +32,21 @@ class MediaFileTest {
         assertTrue(MediaFile.shouldIndex("Movies/Short.mp4", 100))
         assertTrue(MediaFile.shouldIndex("Music/Track.mp3", 100))
         assertFalse(MediaFile.shouldIndex("Movies/Empty.mp4", 0))
-        assertFalse(MediaFile.shouldIndex("Music/Cover.jpg", 100))
+        assertTrue(MediaFile.shouldIndex("Music/Cover.jpg", 100))
+    }
+    @Test fun photosKeepTheirOwnKindAndNeverBecomeVideoOrTelevision() {
+        for (ext in listOf("jpg", "jpeg", "png", "webp", "heic", "heif")) {
+            val path = "Movies/Documentaries/Family.S01E02.${ext.uppercase()}"
+            assertTrue(ext, MediaFile.isPhoto(path))
+            assertTrue(ext, MediaFile.shouldIndex(path, 500))
+            assertEquals(MediaKind.PHOTO, MediaFile.kind(path, listOf("Music"), matched = true, isEpisode = true))
+            assertFalse(ext, MediaFile.isPlayable(path))
+        }
+        for (path in listOf("Photos/.hidden/a.jpg", "Photos/node_modules/a.png", "Photos/._portrait.jpg"))
+            assertFalse(path, MediaFile.shouldIndex(path, 500))
+        for (ext in listOf("gif", "bmp", "svg", "raw", "dng", "pdf"))
+            assertFalse(ext, MediaFile.isPhoto("Photos/image.$ext"))
+        assertFalse(MediaFile.shouldIndex("Photos/empty.jpg", 0))
     }
     @Test fun musicTitlesDoNotUseMovieExtrasExclusions() {
         assertTrue(MediaFile.shouldIndex("Music/Sample/Extras/sample.mp3", 100))
