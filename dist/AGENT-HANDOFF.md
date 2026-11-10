@@ -491,3 +491,14 @@ documentation; its application source is identical to the validated revision.
   including multiple selections, saved preferences, Back cancellation, source
   removal and applying with the remote. Apple preview workflows now capture the
   production Genre picker with Adventure and Drama checked.
+- Revision `64ec2d7` passed [Android TV validation](https://github.com/dinesh-devkota/CineVault/actions/runs/42900395813)
+  with 42 runtime tests, zero failures and zero skips. All five
+  [development checks](https://github.com/dinesh-devkota/CineVault/actions/runs/42900395028)
+  passed, including 59 Swift core tests, five build-helper tests and 72 Apple TV
+  simulator tests. Local Android unit tests passed all 125 cases.
+- The configured `CineVault_TV` emulator received the tested APK with `install -r`.
+  Its installed checksum matched the local build. The temporary empty emulator
+  used for destructive navigation tests was removed afterward.
+- Both filter screens were visually checked. The
+  [Apple preview archive](https://github.com/dinesh-devkota/CineVault/actions/runs/42900395028/artifacts/13803401021)
+  contains Home, details, NAS and the selected Genre list.
