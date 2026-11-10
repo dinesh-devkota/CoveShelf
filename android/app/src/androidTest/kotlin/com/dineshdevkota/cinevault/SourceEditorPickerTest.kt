@@ -34,7 +34,7 @@ class SourceEditorPickerTest {
         .setAsVerticalList().setMaxSearchSwipes(8)
 
     @Test
-    fun editPickersPersistFolderAndFileExclusionsAndScanTheSelectedRoot() = runBlocking {
+    fun editPickersPersistFolderAndFileExclusionsAndScanTheSelectedRoot() = runBlocking<Unit> {
         val host = InstrumentationRegistry.getArguments().getString("nasHost")
         assumeTrue("Pass nasHost for the synthetic SMB fixture", !host.isNullOrBlank())
         // Save & Scan also starts the app-wide metadata pass. Only run on an empty test library.
