@@ -32,8 +32,9 @@ common `Media` parent, then scan again.
 
 ## Choose what to scan or ignore
 
-Open **Sources → Edit** for the NAS. Use **Choose scan folder** to browse the
-share, open subfolders, and select **Use this folder** or the share root.
+Open **Sources → Edit** for the NAS. Use **Choose scan folder** on Android or
+**Choose a media folder** on Apple TV to browse the share, open subfolders, and
+select **Use this folder** or the share root.
 
 Under **Ignored folders and files**, open the folder/file picker. Choose
 **Ignore folder** to exclude that folder and all its descendants, or **Ignore

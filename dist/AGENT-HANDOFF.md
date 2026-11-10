@@ -526,3 +526,29 @@ documentation; its application source is identical to the validated revision.
   assembly. The new form/sign-in emulator test passed on isolated
   `CineMediaNasUITest`; visual review also found the NAS on the first discovery.
   Hosted validation and final deployment evidence will be recorded below.
+- Revision `ce5d067` passed all five
+  [development checks](https://github.com/dinesh-devkota/CineVault/actions/runs/42905475679),
+  including unsigned Apple device/simulator builds, NAS integration, core tests
+  and the [five-screen preview archive](https://github.com/dinesh-devkota/CineVault/actions/runs/42905475679/artifacts/13806070574).
+  Discovery and media-folder screenshots were visually reviewed.
+- Final review also made Android folder/ignore browsing use the same normalized
+  validation as Save/Test; invalid nonempty ports no longer fall back to 445.
+  Its targeted editor test passed locally. The first hosted setup-navigation test
+  sent a second Back before its child folder finished opening; synchronization
+  now waits for the expected folder and successful listing without increasing
+  timeouts or removing navigation coverage.
+- Final Android revision `5f21395` passed
+  [Android TV validation](https://github.com/dinesh-devkota/CineVault/actions/runs/42907195500):
+  build, unit tests, lint, packaging and **45 runtime tests, zero failures or skips**.
+  Both new local form/picker regressions also passed on the disposable TV.
+- Installed the final APK on the owner's `CineVault_TV` using `install -r` after
+  confirming its device identity. The installed SHA-256 matched the tested APK
+  (`2ce75b8ec39ea75c5b3ec2f231b29456b3636da5eb33639d114578a16a5e1506`).
+  No app data was cleared. The owner emulator was closed normally afterward;
+  the isolated test AVD was removed. Other project emulators were not changed.
+- The final revision also passed all five
+  [development checks](https://github.com/dinesh-devkota/CineVault/actions/runs/42907195486),
+  including Apple device/simulator builds, NAS integration and preview capture.
+  Public development and main are ready to receive the validation-notes commit
+  together. Physical Apple TV installation/playback remains pending signing and
+  the owner's device setup; no TestFlight or store upload was performed.
