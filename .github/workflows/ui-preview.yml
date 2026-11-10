@@ -89,6 +89,14 @@ jobs:
           LAUNCH=$(xcrun simctl launch "$DEVICE" com.dineshdevkota.cinevault --ui-preview-filters)
           PID="${LAUNCH##*: }"
           capture_when_ready "$RUNNER_TEMP/cinevault-filters.png" "All Genres" "Adventure" "Drama" "Apply"
+          xcrun simctl terminate "$DEVICE" com.dineshdevkota.cinevault
+          LAUNCH=$(xcrun simctl launch "$DEVICE" com.dineshdevkota.cinevault --ui-preview-nas)
+          PID="${LAUNCH##*: }"
+          capture_when_ready "$RUNNER_TEMP/cinevault-nas.png" "Devices on your network"
+          xcrun simctl terminate "$DEVICE" com.dineshdevkota.cinevault
+          LAUNCH=$(xcrun simctl launch "$DEVICE" com.dineshdevkota.cinevault --ui-preview-nas-folder)
+          PID="${LAUNCH##*: }"
+          capture_when_ready "$RUNNER_TEMP/cinevault-nas-folder.png" "Living Room NAS" "Use this folder & scan"
       - uses: actions/upload-artifact@v4
         with:
           name: cinevault-ui-preview
@@ -96,6 +104,8 @@ jobs:
             ${{ runner.temp }}/cinevault-home.png
             ${{ runner.temp }}/cinevault-detail.png
             ${{ runner.temp }}/cinevault-filters.png
+            ${{ runner.temp }}/cinevault-nas.png
+            ${{ runner.temp }}/cinevault-nas-folder.png
           if-no-files-found: error
           retention-days: 7
       - name: Upload screenshots for failed previews

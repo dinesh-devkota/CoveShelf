@@ -9,7 +9,7 @@ struct MediaGuideView: View {
                 Button("Back to Settings") { dismiss() }
             }
             Section("One source for your whole library") {
-                Text("Select your Media share and leave the folder empty. If Media is inside another share, choose its Media folder. Scans include every subfolder. A source ending in Media/Movies cannot find sibling Music or TV Shows folders; select their common parent instead.")
+                Text("In Sources, add a NAS, choose a discovered device or enter its address, then sign in if needed. Select your Media share and use its top-level folder. If Media is inside another share, open its Media folder. Choose Use this folder & scan. Scans include every subfolder. A source ending in Media/Movies cannot find sibling Music or TV Shows folders; select their common parent instead.")
                     .focusable()
             }
             Section("Choose folders and files to ignore") {

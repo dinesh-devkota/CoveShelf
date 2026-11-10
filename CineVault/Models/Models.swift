@@ -106,7 +106,7 @@ struct SourceConfig: Sendable, Hashable {
     }
 
     var serverURL: URL? {
-        URL(string: "smb://\(host)" + (port.map { ":\($0)" } ?? ""))
+        (try? NASAddress.parse(host, port: port))?.serverURL
     }
 }
 

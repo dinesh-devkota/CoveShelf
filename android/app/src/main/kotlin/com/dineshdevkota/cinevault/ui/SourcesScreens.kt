@@ -31,6 +31,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.dineshdevkota.cinevault.container
+import com.dineshdevkota.cinevault.core.NasAddress
 import com.dineshdevkota.cinevault.data.MovieEntity
 import com.dineshdevkota.cinevault.data.SourceEntity
 import kotlinx.coroutines.CancellationException
@@ -51,7 +52,7 @@ fun SourcesTab(movies: List<MovieEntity>) {
         contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, bottom = 48.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { ScreenHeader("Sources", kicker = "YOUR NAS", trailing = status) }
+        item { ScreenHeader("Sources", kicker = "YOUR NAS") }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(onClick = { NasSetupActivity.start(context) }) { Text("Add NAS Source") }
@@ -61,6 +62,15 @@ fun SourcesTab(movies: List<MovieEntity>) {
                 ) {
                     Text(if (scanning) "Scanning…" else "Rescan All")
                 }
+            }
+        }
+        status?.let { note ->
+            item {
+                NasStatusPanel(
+                    if (scanning) "Updating your library" else "Latest scan",
+                    note, working = scanning,
+                    error = !scanning && (note.startsWith("Scan failed") || note.startsWith("Could not")),
+                )
             }
         }
         if (sources.isEmpty()) {
@@ -89,7 +99,7 @@ private fun SourceRow(source: SourceEntity, count: Int, scanning: Boolean, onSca
             Text(source.name, style = MaterialTheme.typography.titleMedium)
             Text(sourceUrl(source), style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
             Text(
-                "$count items · last scan ${source.lastScanAt?.let(::formatDate) ?: "never"}",
+                "$count items · ${source.lastScanAt?.let { "Last scanned ${formatDate(it)}" } ?: "Ready for first scan"}",
                 style = MaterialTheme.typography.labelMedium,
                 color = SecondaryText,
             )
@@ -99,8 +109,10 @@ private fun SourceRow(source: SourceEntity, count: Int, scanning: Boolean, onSca
     }
 }
 
-fun sourceUrl(source: SourceEntity): String =
-    "smb://" + listOf(source.host, source.share, source.rootPath).filter { it.isNotEmpty() }.joinToString("/")
+fun sourceUrl(source: SourceEntity): String {
+    val address = runCatching { NasAddress.parse(source.host, source.port) }.getOrNull() ?: return "Invalid NAS address"
+    return "smb://" + listOf(address.authority, source.share, source.rootPath).filter { it.isNotEmpty() }.joinToString("/")
+}
 
 @Composable
 fun SettingsTab() {

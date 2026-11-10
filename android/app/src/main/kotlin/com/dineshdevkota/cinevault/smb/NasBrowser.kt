@@ -1,5 +1,6 @@
 package com.dineshdevkota.cinevault.smb
 
+import com.dineshdevkota.cinevault.core.NasAddress
 import com.hierynomus.msfscc.FileAttributes
 import com.hierynomus.mssmb2.SMBApiException
 import com.hierynomus.protocol.commons.EnumWithValue.EnumUtils
@@ -53,8 +54,7 @@ class NasBrowser {
     }
 
     private fun <T> withSession(config: SourceConfig, block: (Session) -> T): T {
-        val host = SmbService.normalizedHost(config.host)
-        require(host.isNotBlank()) { "Enter a NAS address." }
+        val address = NasAddress.parse(config.host, config.port)
         val contexts = if (config.username.isBlank()) {
             listOf(AuthenticationContext.anonymous(), AuthenticationContext.guest())
         } else {
@@ -63,7 +63,7 @@ class NasBrowser {
         }
         SMBClient(SmbConfig.builder().withSecurityProvider(BCSecurityProvider())
             .withTimeout(8, TimeUnit.SECONDS).withSoTimeout(10, TimeUnit.SECONDS).build()).use { client ->
-            client.connect(host, config.port ?: SMBClient.DEFAULT_PORT).use { connection ->
+            client.connect(address.host, address.port ?: SMBClient.DEFAULT_PORT).use { connection ->
                 for ((index, context) in contexts.withIndex()) {
                     try {
                         return connection.authenticate(context).use(block)

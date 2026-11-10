@@ -42,6 +42,23 @@ enum SMBError: LocalizedError, Equatable {
 actor SMBService {
     static let shared = SMBService()
 
+    /// libsmb2 also maps logon failures to connection-refused; that code alone is not an auth signal.
+    nonisolated static func isAuthenticationFailure(_ error: Error) -> Bool {
+        var current = error as NSError
+        for _ in 0..<8 {
+            if current.domain == NSPOSIXErrorDomain {
+                if current.code == Int(POSIXErrorCode.EACCES.rawValue) { return true }
+                let detail = [NSLocalizedDescriptionKey, NSLocalizedFailureReasonErrorKey]
+                    .compactMap { current.userInfo[$0] as? String }.joined(separator: " ").lowercased()
+                if ["status_logon_failure", "status_wrong_password", "status_access_denied",
+                    "0xc000006d", "0xc000006a", "0xc0000022"].contains(where: detail.contains) { return true }
+            }
+            guard let underlying = current.userInfo[NSUnderlyingErrorKey] as? Error else { break }
+            current = underlying as NSError
+        }
+        return false
+    }
+
     private let timeout: TimeInterval?
     private let connect: (SMB2Manager, String) async throws -> Void
     private var managers: [SourceConfig: SMB2Manager] = [:]

@@ -31,4 +31,17 @@ class SmbSessionFailureTest {
         assertFalse(SmbService.isStaleSession(SmbException("The NAS file is empty.")))
         assertFalse(SmbService.isStaleSession(IllegalArgumentException("invalid operation")))
     }
+
+    @Test
+    fun onlyAuthenticationAndAccessFailuresPromptForCredentials() {
+        for (status in listOf(0xC000006DL, 0xC000006AL, 0xC0000022L)) {
+            val failure = SMBApiException(status, SMB2MessageCommandCode.SMB2_CREATE, null)
+            assertTrue(SmbService.isAuthenticationFailure(IOException("wrapped failure", failure)))
+        }
+        for (status in listOf(0xC00000CCL, 0xC0000034L, 0xC000003AL)) {
+            assertFalse(SmbService.isAuthenticationFailure(SMBApiException(status, SMB2MessageCommandCode.SMB2_CREATE, null)))
+        }
+        assertFalse(SmbService.isAuthenticationFailure(java.net.SocketTimeoutException()))
+        assertFalse(SmbService.isAuthenticationFailure(java.net.UnknownHostException()))
+    }
 }

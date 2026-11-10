@@ -4,6 +4,7 @@ import com.dineshdevkota.cinevault.core.RemoteFile
 import com.dineshdevkota.cinevault.core.VideoFile
 import com.dineshdevkota.cinevault.core.MediaFile
 import com.dineshdevkota.cinevault.core.ScanExclusions
+import com.dineshdevkota.cinevault.core.NasAddress
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
 import com.hierynomus.mssmb2.SMB2CreateDisposition
@@ -41,7 +42,7 @@ data class SourceConfig(
     val ignoredFolders: List<String> = emptyList(),
     val ignoredFiles: List<String> = emptyList(),
 ) {
-    override fun toString(): String = "SourceConfig(id=$id, host=$host, share=$share)"
+    override fun toString(): String = "SourceConfig(id=$id, host=${runCatching { NasAddress.parse(host, port).host }.getOrDefault("invalid")}, share=$share)"
 }
 
 class SmbException(message: String) : IOException(message)
@@ -95,9 +96,8 @@ class SmbService(
     )
 
     private fun connect(config: SourceConfig): Connected {
-        val host = normalizedHost(config.host)
-        if (host.isEmpty()) throw SmbException("Invalid server address.")
-        val connection = client.connect(host, config.port ?: SMBClient.DEFAULT_PORT)
+        val address = NasAddress.parse(config.host, config.port)
+        val connection = client.connect(address.host, address.port ?: SMBClient.DEFAULT_PORT)
         val contexts = if (config.username.isEmpty()) {
             listOf(AuthenticationContext.guest(), AuthenticationContext.anonymous())
         } else {
@@ -307,8 +307,13 @@ class SmbService(
             return chain.any { it is IOException }
         }
 
-        fun normalizedHost(raw: String): String =
-            raw.trim().removePrefix("smb://").removePrefix("\\\\").trim('/', '\\').substringBefore('/')
+        fun normalizedHost(raw: String): String = NasAddress.parse(raw).host
+
+        /** Only sign-in/access failures should prompt for credentials; timeouts keep the current form. */
+        fun isAuthenticationFailure(error: Throwable): Boolean =
+            generateSequence(error) { it.cause }.take(8).any {
+                it is SMBApiException && it.statusCode in setOf(0xC000006DL, 0xC000006AL, 0xC0000022L)
+            }
 
         /** "DOMAIN\\user" becomes (DOMAIN, user). */
         fun splitDomain(username: String): Pair<String?, String> = when {

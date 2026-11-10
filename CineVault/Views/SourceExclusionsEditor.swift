@@ -8,11 +8,12 @@ struct SourceExclusionsEditor: View {
     let configuration: SourceConfig
     @State private var manualPath = ""
     @State private var manualIsFolder = true
+    @State private var showManualPath = false
     @State private var errorText: String?
 
     var body: some View {
         Section {
-            Text("Paths are relative to \(configuration.rootPath.isEmpty ? configuration.share : configuration.rootPath). Ignoring only hides items from this library; files and playback history are kept.")
+            Text("Choose anything to leave out of this library. Your files and playback history are kept.")
                 .font(.caption).foregroundStyle(.secondary)
             NavigationLink("Browse folders and files to ignore") {
                 NASPathPicker(configuration: configuration, mode: .ignore) { path, isFolder in
@@ -26,13 +27,16 @@ struct SourceExclusionsEditor: View {
             ForEach(files, id: \.self) { file in
                 Button("Stop ignoring file: \(file)") { files.removeAll { $0 == file } }
             }
-            Picker("Ignore", selection: $manualIsFolder) {
-                Text("Folder and subfolders").tag(true)
-                Text("One file").tag(false)
+            Toggle("Enter a path manually", isOn: $showManualPath)
+            if showManualPath {
+                Picker("Ignore", selection: $manualIsFolder) {
+                    Text("Folder and subfolders").tag(true)
+                    Text("One file").tag(false)
+                }
+                TextField("Path inside this media folder", text: $manualPath)
+                Button("Add ignored path") { add(manualPath, folder: manualIsFolder) }
+                    .disabled(manualPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            TextField("Relative path (e.g. Movies/Extras)", text: $manualPath)
-            Button("Add ignored path") { add(manualPath, folder: manualIsFolder) }
-                .disabled(manualPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             if let errorText { Text(errorText).foregroundStyle(.red) }
             if !folders.isEmpty || !files.isEmpty {
                 Text("Save to apply. Stop ignoring and rescan to restore items.").font(.caption).foregroundStyle(.secondary)
@@ -80,7 +84,6 @@ struct NASPathPicker: View {
     var body: some View {
         List {
             Section {
-                Button("Back") { dismiss() }
                 Text("\(configuration.share) / \(path.isEmpty ? "Top level" : path)")
                 if busy { ProgressView("Reading folder…") }
                 if let errorText { Text(errorText).foregroundStyle(.red) }
@@ -97,7 +100,7 @@ struct NASPathPicker: View {
                 if mode == .scanRoot && !path.isEmpty {
                     Button("Open share root") { browse("") }.disabled(busy)
                 }
-                Button("Refresh folder") { browse(path) }.disabled(busy)
+                Button(errorText == nil ? "Refresh folder" : "Try again") { browse(path) }.disabled(busy)
             }
             Section("Folders") {
                 ForEach(entries.filter(\.isDirectory)) { entry in
@@ -118,9 +121,13 @@ struct NASPathPicker: View {
                 }
             }
             if ready && entries.isEmpty { Text("This folder is empty.").foregroundStyle(.secondary) }
+            Section { Button("Back") { dismiss() } }
         }
         .navigationTitle(mode == .scanRoot ? "Choose scan folder" : "Choose item to ignore")
-        .onExitCommand { dismiss() }
+        .onExitCommand {
+            if canGoUp { browse(path.split(separator: "/").dropLast().joined(separator: "/")) }
+            else { dismiss() }
+        }
         .onAppear {
             if !loaded {
                 loaded = true

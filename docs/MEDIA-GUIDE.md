@@ -5,12 +5,24 @@ network. Your files stay on the NAS; no media server or transcoding box is neede
 
 ## Connect one shared parent folder
 
-In **Sources**, add your NAS and select the share containing your media. Enter
-credentials only in the app. A read-only NAS account is recommended; keep its
-password out of chat, screenshots, and issue reports.
+In **Sources**, choose **Add NAS** (**Add NAS Source** on Android), then select a discovered NAS or enter
+its address. Cine-Media tries guest access first. If your NAS requires an account,
+choose **Sign in** and enter its username and password in the app. A read-only NAS
+account is recommended; keep its password out of chat, screenshots, and issue reports.
 
-If the share itself is named `Media`, select it and leave **Folder inside share**
-empty. If `Media` is inside another share, select that share and choose its `Media`
+Choose the shared folder, then open the parent folder containing your media.
+Choose **Use this folder & scan** to save it and start scanning. **Back** returns
+through the folders you opened. If a folder cannot be opened, retry or go back
+without re-entering the connection.
+
+If discovery does not list your NAS, its hostname or IP address can still work.
+Addresses such as `smb://media-nas` and Windows network paths such as
+`\\media-nas\Media` are accepted for the server address; select the share and
+media folder in the following steps. Connection options include a custom SMB port
+when your NAS needs one. If it restricts share browsing, enter the share name manually.
+
+If the share itself is named `Media`, select it and use its top-level folder.
+If `Media` is inside another share, select that share and choose its `Media`
 folder. Cine-Media scans the selected folder and all its subfolders recursively.
 You do not need to add each movie, show, or category separately.
 

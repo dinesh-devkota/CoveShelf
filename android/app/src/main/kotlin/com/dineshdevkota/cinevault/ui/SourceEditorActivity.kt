@@ -9,6 +9,10 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -25,7 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -35,12 +41,14 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.dineshdevkota.cinevault.container
+import com.dineshdevkota.cinevault.core.NasAddress
 import com.dineshdevkota.cinevault.data.SourceEntity
 import com.dineshdevkota.cinevault.data.saveSourceWithExclusions
 import com.dineshdevkota.cinevault.smb.SmbService
 import com.dineshdevkota.cinevault.smb.SourceConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -66,6 +74,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
     val container = LocalContext.current.container
     val scope = rememberCoroutineScope()
     val scanning by container.scanner.isScanning.collectAsStateWithLifecycle()
+    val scanStatus by container.scanner.status.collectAsStateWithLifecycle()
     val draftId = remember { UUID.randomUUID().toString() }
     var existing by remember { mutableStateOf<SourceEntity?>(null) }
     var loaded by remember { mutableStateOf(sourceId == null) }
@@ -82,6 +91,9 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var messageIsError by remember { mutableStateOf(false) }
+    var workDescription by remember { mutableStateOf("") }
+    var confirmRemoval by remember { mutableStateOf(false) }
 
     LaunchedEffect(sourceId) {
         if (sourceId == null || loaded) return@LaunchedEffect
@@ -105,30 +117,52 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
             throw e
         } catch (e: Exception) {
             message = e.message ?: "Could not read the saved password. Enter it again."
+            messageIsError = true
         }
         loaded = true
     }
-    if (!loaded) return
+    if (!loaded) {
+        Column(Modifier.padding(ScreenPadding)) { NasStatusPanel("Opening source…", working = true) }
+        return
+    }
     val firstField = remember { FocusRequester() }
-    LaunchedEffect(Unit) { firstField.requestFocus() }
+    var firstFieldReady by remember { mutableStateOf(false) }
+    var initialFocusSet by remember { mutableStateOf(false) }
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(firstFieldReady, windowFocused) {
+        if (firstFieldReady && windowFocused && !initialFocusSet) initialFocusSet = firstField.requestFocus()
+    }
 
     fun config(): SourceConfig? {
         val portText = port.trim()
         val portValue = portText.toIntOrNull()?.takeIf { it in 1..65535 }
         if (portText.isNotEmpty() && portValue == null) {
             message = "Port must be a number from 1 to 65535."
+            messageIsError = true
             return null
         }
         val hostValue = host.trim()
         val shareValue = share.trim().trim('/', '\\')
         if (hostValue.isEmpty() || shareValue.isEmpty()) {
             message = "Enter the NAS address and share name."
+            messageIsError = true
+            return null
+        }
+        if (rootPath.replace('\\', '/').split('/').any { it == ".." }) {
+            message = "Choose a folder inside the shared folder."
+            messageIsError = true
+            return null
+        }
+        val address = try { NasAddress.parse(hostValue, portValue) }
+        catch (failure: IllegalArgumentException) {
+            message = failure.message
+            messageIsError = true
             return null
         }
         return SourceConfig(
             id = existing?.id ?: draftId,
-            host = hostValue,
-            port = portValue,
+            host = address.host,
+            port = address.port,
             share = shareValue,
             rootPath = rootPath.trim().trim('/', '\\', ' '),
             username = username.trim(),
@@ -139,6 +173,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
     }
 
     fun clearExclusionsForSourceChange() {
+        message = null
         if (ignoredFolders.isNotEmpty() || ignoredFiles.isNotEmpty()) {
             ignoredFolders = emptyList(); ignoredFiles = emptyList()
             exclusionsNotice = "NAS connection or scan folder changed. Previous ignore rules were cleared; choose new rules below."
@@ -150,9 +185,11 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
         rootPath = value
     }
 
-    fun launchWork(work: suspend () -> Unit) {
+    fun launchWork(description: String, work: suspend () -> Unit) {
         busy = true
+        workDescription = description
         message = null
+        messageIsError = false
         scope.launch {
             try {
                 work()
@@ -160,6 +197,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                 throw e
             } catch (e: Exception) {
                 message = "Failed: ${SmbService.describe(e)}"
+                messageIsError = true
             } finally {
                 busy = false
             }
@@ -174,7 +212,10 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
             .padding(horizontal = ScreenPadding, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenHeader(if (sourceId == null) "Add NAS" else "Edit Source", kicker = "SOURCES")
+        ScreenHeader(if (sourceId == null) "Add NAS" else "Edit NAS", kicker = "SOURCES")
+        if (busy) NasStatusPanel(workDescription, working = true)
+        else if (scanning) NasStatusPanel("Library scan in progress", scanStatus ?: "You can save these changes after the scan finishes.", working = true)
+        message?.let { NasStatusPanel(if (messageIsError) "Connection needs attention" else "Connection verified", it, error = messageIsError) }
         Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Server", style = MaterialTheme.typography.titleMedium)
@@ -182,7 +223,8 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                     name,
                     { name = it },
                     "Name (e.g. Living Room NAS)",
-                    Modifier.fillMaxWidth().focusRequester(firstField),
+                    Modifier.fillMaxWidth().focusRequester(firstField).onGloballyPositioned { firstFieldReady = true },
+                    enabled = !busy,
                 )
                 TvTextField(
                     host,
@@ -190,6 +232,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                     "Host or IP (e.g. 192.168.1.20)",
                     Modifier.fillMaxWidth(),
                     keyboardType = KeyboardType.Uri,
+                    enabled = !busy,
                 )
                 TvTextField(
                     port,
@@ -197,13 +240,15 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                     "Port (optional, default 445)",
                     Modifier.fillMaxWidth(),
                     keyboardType = KeyboardType.Number,
+                    enabled = !busy,
                 )
-                TvTextField(username, { username = it }, "Username (empty for guest)", Modifier.fillMaxWidth())
-                TvTextField(password, { password = it }, "Password", Modifier.fillMaxWidth(), isPassword = true)
+                Text("Sign in", style = MaterialTheme.typography.titleMedium)
+                TvTextField(username, { message = null; username = it }, "Username (empty for guest)", Modifier.fillMaxWidth(), enabled = !busy)
+                TvTextField(password, { message = null; password = it }, "Password", Modifier.fillMaxWidth(), isPassword = true, enabled = !busy)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Folder", style = MaterialTheme.typography.titleMedium)
-                TvTextField(share, { if (share != it) clearExclusionsForSourceChange(); share = it }, "Share (e.g. media)", Modifier.fillMaxWidth())
+                Text("Media folder", style = MaterialTheme.typography.titleMedium)
+                TvTextField(share, { if (share != it) clearExclusionsForSourceChange(); share = it }, "Share (e.g. media)", Modifier.fillMaxWidth(), enabled = !busy)
                 NasRootFolderPicker(browseConfig, idle, ::changeRoot)
                 OutlinedButton(enabled = idle, onClick = { manualRoot = !manualRoot }) { Text("Enter folder path manually") }
                 if (manualRoot) TvTextField(rootPath, ::changeRoot, "Folder inside share (empty for share root)",
@@ -223,7 +268,7 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                 enabled = idle,
                 onClick = {
                     val c = config() ?: return@OutlinedButton
-                    launchWork {
+                    launchWork("Checking connection…") {
                         container.smb.testConnection(c)
                         message = "Connected successfully."
                     }
@@ -233,13 +278,14 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                 enabled = idle,
                 onClick = {
                     val c = config() ?: return@Button
-                    launchWork {
+                    val savedName = name.trim().ifEmpty { c.host }
+                    launchWork("Saving source…") {
                         val sealed = if (c.username.isEmpty()) "" else withContext(Dispatchers.Default) {
                             container.secrets.encrypt(c.password)
                         }
                         val entity = SourceEntity(
                             id = c.id,
-                            name = name.trim().ifEmpty { c.host },
+                            name = savedName,
                             host = c.host,
                             port = c.port,
                             share = c.share,
@@ -250,18 +296,36 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                             ignoredFolders = c.ignoredFolders,
                             ignoredFiles = c.ignoredFiles,
                         )
-                        container.database.saveSourceWithExclusions(entity)
-                        container.smb.reset(entity.id)
-                        container.scope.launch { container.scanner.scan(entity.id) }
+                        // Saving and queueing its scan form one operation after the commit begins.
+                        withContext(NonCancellable) {
+                            container.database.saveSourceWithExclusions(entity)
+                            container.smb.reset(entity.id)
+                            container.scope.launch { container.scanner.scan(entity.id) }
+                        }
                         onClose()
                     }
                 },
             ) { Text("Save & Scan") }
-            existing?.let { source ->
+            if (existing != null) {
                 OutlinedButton(
                     enabled = idle,
-                    onClick = {
-                        launchWork {
+                    onClick = { confirmRemoval = true },
+                ) { Text("Remove source") }
+            }
+        }
+    }
+    if (confirmRemoval) {
+        Dialog(onDismissRequest = { confirmRemoval = false }) {
+            Column(Modifier.widthIn(max = 520.dp).background(SurfaceColor, RoundedCornerShape(16.dp)).padding(28.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text("Remove ${existing?.name.orEmpty()}?", style = MaterialTheme.typography.headlineSmall)
+                Text("This removes its library entries and saved playback progress from this device. Media files stay on the NAS.", color = SecondaryText)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(onClick = { confirmRemoval = false }) { Text("Keep source") }
+                    OutlinedButton(onClick = {
+                        confirmRemoval = false
+                        val source = existing ?: return@OutlinedButton
+                        launchWork("Removing source…") {
                             container.database.withTransaction {
                                 container.database.movies().deleteForSource(source.id)
                                 container.database.sources().delete(source.id)
@@ -269,11 +333,9 @@ private fun SourceEditorScreen(sourceId: String?, onClose: () -> Unit) {
                             container.smb.reset(source.id)
                             onClose()
                         }
-                    },
-                ) { Text("Delete Source") }
+                    }, enabled = idle) { Text("Remove") }
+                }
             }
         }
-        val note = message ?: if (scanning) "Wait for the current scan to finish." else null
-        if (note != null) Text(note, color = SecondaryText)
     }
 }

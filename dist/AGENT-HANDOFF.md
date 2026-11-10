@@ -502,3 +502,27 @@ documentation; its application source is identical to the validated revision.
 - Both filter screens were visually checked. The
   [Apple preview archive](https://github.com/dinesh-devkota/CineVault/actions/runs/42900395028/artifacts/13803401021)
   contains Home, details, NAS and the selected Genre list.
+
+### November 10, 2026 — NAS connection polish
+
+- The owner requested a polished NAS connection flow on both TV platforms.
+  Setup now separates discovery/address, sign-in, shared-folder selection and
+  media-folder selection, tries guest access first, and offers manual shares for
+  NAS devices that restrict enumeration. Folder failures retain context with
+  retry and parent navigation. Optional ports and manual paths stay collapsed.
+- Both platforms validate pasted SMB/Windows addresses, hostnames, IPv4/IPv6 and
+  custom ports consistently. Authentication failures request credentials;
+  ordinary connectivity and missing-folder failures do not.
+- Editing freezes connection fields while checking/saving, clears obsolete
+  success messages after edits, cancels stale requests, and confirms removal.
+  Android save-to-scan handoff survives screen disposal. Apple request-specific
+  connections prevent a canceled check from invalidating a newer retry.
+- Added address, error-classification and Apple form regression tests plus
+  `NasSetupNavigationTest` for remote navigation, validation, known-share recovery
+  and actual persistence/scanning against the hosted synthetic NAS. The required
+  Android runtime set includes this test. Apple previews include the ready media
+  folder screen in addition to live discovery.
+- Initial local Android checks passed all 131 unit tests, debug lint and APK/test
+  assembly. The new form/sign-in emulator test passed on isolated
+  `CineMediaNasUITest`; visual review also found the NAS on the first discovery.
+  Hosted validation and final deployment evidence will be recorded below.

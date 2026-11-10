@@ -11,7 +11,10 @@ struct CineVaultApp: App {
         WindowGroup {
             Group {
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas") {
+                if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas-folder") {
+                    NASSetupView.folderPreview.environmentObject(scanner)
+                        .modelContainer(for: [MediaSource.self, Movie.self], inMemory: true)
+                } else if ProcessInfo.processInfo.arguments.contains("--ui-preview-nas") {
                     NASSetupView().environmentObject(scanner)
                         .modelContainer(for: [MediaSource.self, Movie.self], inMemory: true)
                 } else if DesignPreview.isEnabled {

@@ -56,8 +56,9 @@ private fun MediaGuideScreen() {
         item {
             GuideSection(
                 "One source for your whole library",
-                "Select your Media share and leave the folder empty. If Media is inside another share, " +
-                    "choose its Media folder. Scans include every subfolder. A source ending in Media/Movies " +
+                "In Sources, add a NAS, choose a discovered device or enter its address, then sign in if needed. " +
+                    "Select your Media share and use its top-level folder. If Media is inside another share, " +
+                    "open its Media folder. Choose Use this folder & scan. Scans include every subfolder. A source ending in Media/Movies " +
                     "cannot find sibling Music or TV Shows folders; select their common parent instead.",
             )
         }
