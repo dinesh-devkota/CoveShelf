@@ -1,5 +1,13 @@
 # CoveShelf — agent handoff
 
+**Current repository (2026-11-13):** the owner requested `mediavault` and the
+public GitHub repository was renamed to `dinesh-devkota/mediavault`. Local origin
+is `https://github.com/dinesh-devkota/mediavault.git`. The app display name remains
+CoveShelf; this request changed the repository name. Historical links below
+retain their original repository names. Development work remains on
+`dinesh-devkota-sonepar-build-cinevault-tvos-app`; the workspace and private
+`CineVaultCommercial` repository retain their existing names.
+
 Current updates are appended chronologically below. The original November 1
 snapshot is retained for history and is superseded by later owner decisions.
 

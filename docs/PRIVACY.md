@@ -44,6 +44,6 @@ manage subscriptions through your Apple Account settings.
 ## Questions
 
 Contact the maintainer through the
-[CoveShelf issue tracker](https://github.com/dinesh-devkota/CoveShelf/issues).
+[CoveShelf issue tracker](https://github.com/dinesh-devkota/mediavault/issues).
 Do not post NAS addresses, passwords, API keys, purchase receipts, or private viewing
 history in a public issue.
